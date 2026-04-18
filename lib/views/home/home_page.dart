@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../cart/cart_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeContent(),
     const ExplorePage(),
-    const CartPage(),
+    const CartPage(), // <--- UBAH BAGIAN INI MENJADI CARTPAGE() MILIK KITA
     const ProfilePage(),
   ];
 
@@ -552,44 +553,6 @@ class ExplorePage extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               'Temukan produk digital terbaik',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// CART PAGE - Halaman Keranjang (placeholder)
-// Pindahkan ke: lib/views/ (buat halaman cart sendiri)
-// ============================================================
-class CartPage extends StatelessWidget {
-  const CartPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF0F2F8),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_rounded,
-                size: 64, color: Color(0xFF6B7FD7)),
-            SizedBox(height: 16),
-            Text(
-              'Keranjang',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D2E),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Belum ada produk di keranjang',
               style: TextStyle(color: Color(0xFF9098B1)),
             ),
           ],

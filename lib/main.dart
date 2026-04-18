@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'views/home/home_page.dart';
+// 1. Ubah import ini agar memanggil file home_page.dart
+import 'package:byteme_digital_marketplace/views/home/home_page.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -15,10 +16,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        primaryColor: const Color(0xFF6B7FD7),
-        // Kamu bisa memindahkan setting font/warna di sini nanti
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A72C6)),
       ),
-      home: const HomePage(), // Menjalankan halaman utama
+      // 2. Arahkan kembali ke HomePage agar Bottom Navigation-nya aktif
+      home: const HomePage(), 
     );
   }
 }
