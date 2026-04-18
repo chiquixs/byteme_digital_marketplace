@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../profile/profile_page.dart';
+import '../cart/cart_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeContent(),
     const ExplorePage(),
-    const CartPage(),
+    const CartPage(), // <--- UBAH BAGIAN INI MENJADI CARTPAGE() MILIK KITA
     const ProfilePage(),
   ];
 
@@ -557,11 +557,11 @@ class ExplorePage extends StatelessWidget {
 }
 
 // ============================================================
-// CART PAGE - Halaman Keranjang (placeholder)
-// Pindahkan ke: lib/views/ (buat halaman cart sendiri)
+// PROFILE PAGE - Halaman Profil (placeholder)
+// Pindahkan ke: lib/views/profile/profile_page.dart
 // ============================================================
-class CartPage extends StatelessWidget {
-  const CartPage({super.key});
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -571,14 +571,10 @@ class CartPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.shopping_bag_rounded,
-              size: 64,
-              color: Color(0xFF6B7FD7),
-            ),
+            Icon(Icons.person_rounded, size: 64, color: Color(0xFF6B7FD7)),
             SizedBox(height: 16),
             Text(
-              'Keranjang',
+              'Profil',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -587,7 +583,7 @@ class CartPage extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Belum ada produk di keranjang',
+              'Kelola akun dan pengaturanmu',
               style: TextStyle(color: Color(0xFF9098B1)),
             ),
           ],
