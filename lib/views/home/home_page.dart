@@ -212,6 +212,12 @@ class _HomeContentState extends State<HomeContent> {
     });
   }
 
+  /// Cek apakah ada filter yang sedang aktif
+  bool get _hasActiveFilter =>
+      _selectedCategory != null ||
+      _selectedPriceRange != null ||
+      _selectedRating != null;
+
   /// Terapkan filter — siap dihubungkan ke controller
   /// TODO(backend): Panggil ProductController.applyFilters() di sini
   void _applyFilters() {
@@ -239,12 +245,20 @@ class _HomeContentState extends State<HomeContent> {
                   _buildHeader(),
                   const SizedBox(height: 20),
                   _buildSearchBar(),
-                  // Filter section muncul di sini, mendorong konten ke bawah
+                  // Filter panel — expand/collapse saat tombol filter diklik
                   AnimatedSize(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     child: _isFilterOpen
                         ? _buildFilterSection()
+                        : const SizedBox.shrink(),
+                  ),
+                  // Active filter chips — muncul setelah Apply Filter
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    child: _hasActiveFilter && !_isFilterOpen
+                        ? _buildActiveFilterChips()
                         : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 20),
@@ -633,6 +647,85 @@ class _HomeContentState extends State<HomeContent> {
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // ACTIVE FILTER CHIPS
+  // Muncul di bawah search bar setelah Apply Filter ditekan
+  // ----------------------------------------------------------
+  Widget _buildActiveFilterChips() {
+    // Kumpulkan semua filter aktif jadi list of string
+    // TODO(backend): List ini bisa di-generate dari ProductController.activeFilters
+    final List<String> activeChips = [
+      if (_selectedCategory != null) _selectedCategory!,
+      if (_selectedPriceRange != null) _selectedPriceRange!,
+      if (_selectedRating != null) '${_selectedRating!}★',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label "Result for :"
+          const Text(
+            'Result for :',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1A1D2E),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Baris chip + tombol X
+          Row(
+            children: [
+              // Chips filter aktif (scrollable kalau banyak)
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: activeChips.map((chip) {
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B7FD7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          chip,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Tombol X — clear semua filter
+              // TODO(backend): Panggil juga ProductController.clearFilters() di sini
+              GestureDetector(
+                onTap: _resetFilters,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  child: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: Color(0xFF9098B1),
                   ),
                 ),
               ),
