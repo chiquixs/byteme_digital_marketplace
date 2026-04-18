@@ -163,8 +163,8 @@ class HomeContent extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildBannerPromo(),
                   const SizedBox(height: 28),
-                  _buildSectionHeader(),
-                  const SizedBox(height: 16),
+                  // _buildSectionHeader(),
+                  // const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -321,156 +321,49 @@ class HomeContent extends StatelessWidget {
   // ----------------------------------------------------------
   // BANNER PROMO
   // ----------------------------------------------------------
-  Widget _buildBannerPromo() {
-    return Container(
-      height: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+Widget _buildBannerPromo() {
+  return Container(
+    width: double.infinity,
+    // Hapus baris height: 150, agar fleksibel
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
       ),
-      child: Stack(
-        children: [
-          // Dekorasi lingkaran latar belakang
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -30,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
-              ),
-            ),
-          ),
-          // Gambar banner kanan — memenuhi sisi kanan dengan proporsi terjaga
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(20),
-              ),
-              child: SizedBox(
-                width: 140,
-                child: Image.asset(
-                  'assets/images/banner.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.centerRight,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.white.withOpacity(0.15),
-                    child: const Icon(
-                      Icons.phone_android_rounded,
-                      color: Colors.white54,
-                      size: 48,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Teks dan tombol
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Get 30% off on UI Kits',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Limited time offer',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.shopping_bag_outlined, size: 16),
-                  label: const Text(
-                    'Shop Now',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF6B7FD7),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------
-  // SECTION HEADER: Best Seller Product + more
-  // ----------------------------------------------------------
-  Widget _buildSectionHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min, // Tambahkan ini agar Column tidak rakus ruang
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Best Seller Product',
+          'Get 30% off on UI Kits',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1D2E),
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        GestureDetector(
-          onTap: () {},
-          child: const Text(
-            'more >',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF6B7FD7),
-              fontWeight: FontWeight.w500,
-            ),
+        const SizedBox(height: 4),
+        const Text(
+          'Limited time offer',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF6B7FD7),
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
+          child: const Text('Shop Now'),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   // ----------------------------------------------------------
   // PRODUCT CARD
