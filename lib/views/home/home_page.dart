@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../cart/cart_page.dart';
+import '../profile/profile_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -310,49 +311,52 @@ class HomeContent extends StatelessWidget {
   // ----------------------------------------------------------
   // BANNER PROMO
   // ----------------------------------------------------------
-Widget _buildBannerPromo() {
-  return Container(
-    width: double.infinity,
-    // Hapus baris height: 150, agar fleksibel
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(20),
-      gradient: const LinearGradient(
-        colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
+  Widget _buildBannerPromo() {
+    return Container(
+      width: double.infinity,
+      // Hapus baris height: 150, agar fleksibel
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
+        ),
       ),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min, // Tambahkan ini agar Column tidak rakus ruang
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Get 30% off on UI Kits',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+      child: Column(
+        mainAxisSize:
+            MainAxisSize.min, // Tambahkan ini agar Column tidak rakus ruang
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Get 30% off on UI Kits',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Limited time offer',
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF6B7FD7),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          const SizedBox(height: 4),
+          const Text(
+            'Limited time offer',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
-          child: const Text('Shop Now'),
-        ),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF6B7FD7),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Shop Now'),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ----------------------------------------------------------
   // PRODUCT CARD
@@ -547,43 +551,6 @@ class ExplorePage extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               'Temukan produk digital terbaik',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// PROFILE PAGE - Halaman Profil (placeholder)
-// Pindahkan ke: lib/views/profile/profile_page.dart
-// ============================================================
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF0F2F8),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_rounded, size: 64, color: Color(0xFF6B7FD7)),
-            SizedBox(height: 16),
-            Text(
-              'Profil',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D2E),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kelola akun dan pengaturanmu',
               style: TextStyle(color: Color(0xFF9098B1)),
             ),
           ],
