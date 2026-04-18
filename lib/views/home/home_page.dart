@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../eksplore/eksplore_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -524,42 +525,6 @@ Widget _buildBannerPromo() {
   }
 }
 
-// ============================================================
-// EXPLORE PAGE - Halaman Explore (placeholder)
-// Pindahkan ke: lib/views/product/product_list_page.dart
-// ============================================================
-class ExplorePage extends StatelessWidget {
-  const ExplorePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF0F2F8),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.explore_rounded, size: 64, color: Color(0xFF6B7FD7)),
-            SizedBox(height: 16),
-            Text(
-              'Explore',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D2E),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Temukan produk digital terbaik',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ============================================================
 // CART PAGE - Halaman Keranjang (placeholder)
