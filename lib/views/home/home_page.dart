@@ -21,7 +21,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeContent(),
     const ExplorePage(),
-    const CartPage(), // <--- UBAH BAGIAN INI MENJADI CARTPAGE() MILIK KITA
+    const CartPage(),
     const ProfilePage(),
   ];
 
@@ -106,11 +106,66 @@ class _HomePageState extends State<HomePage> {
 
 // ============================================================
 // HOME CONTENT - Konten utama halaman Home
+// Diubah dari StatelessWidget → StatefulWidget untuk filter state
 // ============================================================
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
 
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  // ──────────────────────────────────────────
+  // FILTER STATE
+  // Semua state filter dikumpulkan di sini agar mudah
+  // dihubungkan ke backend/controller nanti.
+  // ──────────────────────────────────────────
+
+  /// Apakah filter section sedang terbuka
+  bool _isFilterOpen = false;
+
+  /// Kategori yang sedang dipilih (null = belum pilih)
+  /// TODO(backend): Kirim nilai ini ke ProductController.filterByCategory()
+  String? _selectedCategory;
+
+  /// Range harga yang sedang dipilih (null = belum pilih)
+  /// TODO(backend): Kirim nilai ini ke ProductController.filterByPrice()
+  String? _selectedPriceRange;
+
+  /// Rating minimum yang sedang dipilih (null = belum pilih)
+  /// TODO(backend): Kirim nilai ini ke ProductController.filterByRating()
+  int? _selectedRating;
+
+  // ──────────────────────────────────────────
+  // DATA FILTER OPTION
+  // Ganti/tambah value di sini sesuai kebutuhan backend
+  // ──────────────────────────────────────────
+  static const List<String> _categoryOptions = [
+    'E-book',
+    'Canva Template',
+    'Excel Template',
+    'UI/UX',
+    'Photo Stock',
+    'PDF Template',
+    'Website Plugin',
+    'Audio / Music',
+    'Software',
+    'Font',
+    'NFT',
+    'Domain',
+  ];
+
+  static const List<String> _priceRangeOptions = [
+    '< 50.000',
+    '50.000-100.000',
+    '100.000-150.000',
+    '> 150.000',
+  ];
+
+  // ──────────────────────────────────────────
   // ⚠️ DATA PRODUK - Ganti path gambar sesuai aset kamu
+  // ──────────────────────────────────────────
   static const List<Map<String, dynamic>> _products = [
     {
       'title': 'E-Book Material',
@@ -146,6 +201,28 @@ class HomeContent extends StatelessWidget {
     },
   ];
 
+  /// Reset semua filter ke kondisi awal
+  /// TODO(backend): Panggil ProductController.clearFilters() di sini
+  void _resetFilters() {
+    setState(() {
+      _selectedCategory = null;
+      _selectedPriceRange = null;
+      _selectedRating = null;
+    });
+  }
+
+  /// Terapkan filter — siap dihubungkan ke controller
+  /// TODO(backend): Panggil ProductController.applyFilters() di sini
+  void _applyFilters() {
+    // Contoh nanti:
+    // context.read<ProductController>().applyFilters(
+    //   category: _selectedCategory,
+    //   priceRange: _selectedPriceRange,
+    //   minRating: _selectedRating,
+    // );
+    setState(() => _isFilterOpen = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -161,6 +238,14 @@ class HomeContent extends StatelessWidget {
                   _buildHeader(),
                   const SizedBox(height: 20),
                   _buildSearchBar(),
+                  // Filter section muncul di sini, mendorong konten ke bawah
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _isFilterOpen
+                        ? _buildFilterSection()
+                        : const SizedBox.shrink(),
+                  ),
                   const SizedBox(height: 20),
                   _buildBannerPromo(),
                   const SizedBox(height: 28),
@@ -263,7 +348,7 @@ class HomeContent extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // SEARCH BAR
+  // SEARCH BAR + TOMBOL FILTER
   // ----------------------------------------------------------
   Widget _buildSearchBar() {
     return Container(
@@ -286,6 +371,9 @@ class HomeContent extends StatelessWidget {
           const SizedBox(width: 10),
           const Expanded(
             child: TextField(
+              // TODO(backend): Hubungkan controller ini ke ProductController.searchQuery
+              // controller: searchController,
+              // onChanged: (val) => context.read<ProductController>().search(val),
               decoration: InputDecoration(
                 hintText: 'Search digital product',
                 hintStyle: TextStyle(
@@ -300,10 +388,267 @@ class HomeContent extends StatelessWidget {
             ),
           ),
           Container(width: 1, height: 24, color: const Color(0xFFE8ECF4)),
-          const SizedBox(width: 14),
-          const Icon(Icons.tune, color: Color(0xFF6B7FD7), size: 22),
-          const SizedBox(width: 16),
+          const SizedBox(width: 4),
+          // ── TOMBOL FILTER ──
+          GestureDetector(
+            onTap: () => setState(() => _isFilterOpen = !_isFilterOpen),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Icon(
+                Icons.tune,
+                // Icon berubah warna: merah kalau ada filter aktif tapi panel tutup
+                color: _isFilterOpen
+                    ? const Color(0xFF6B7FD7)
+                    : (_selectedCategory != null ||
+                            _selectedPriceRange != null ||
+                            _selectedRating != null)
+                        ? const Color(0xFFFF4D67)
+                        : const Color(0xFF6B7FD7),
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
         ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // FILTER SECTION
+  // ----------------------------------------------------------
+  Widget _buildFilterSection() {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── CATEGORY ──
+          _buildFilterLabel('Category'),
+          const SizedBox(height: 10),
+          // TODO(backend): _selectedCategory dikirim ke controller saat apply
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _categoryOptions.map((category) {
+              final bool isSelected = _selectedCategory == category;
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _selectedCategory = isSelected ? null : category;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6B7FD7)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF6B7FD7)
+                          : const Color(0xFFD0D5E8),
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    category,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF6B7FD7),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFF0F2F8), thickness: 1),
+          const SizedBox(height: 12),
+
+          // ── PRICE ──
+          _buildFilterLabel('Price'),
+          const SizedBox(height: 10),
+          // TODO(backend): _selectedPriceRange dikirim ke controller saat apply
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _priceRangeOptions.map((range) {
+              final bool isSelected = _selectedPriceRange == range;
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _selectedPriceRange = isSelected ? null : range;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6B7FD7)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF6B7FD7)
+                          : const Color(0xFFD0D5E8),
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    range,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF6B7FD7),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFF0F2F8), thickness: 1),
+          const SizedBox(height: 12),
+
+          // ── RATING ──
+          _buildFilterLabel('Rating'),
+          const SizedBox(height: 10),
+          // TODO(backend): _selectedRating dikirim ke controller saat apply
+          Row(
+            children: List.generate(5, (i) {
+              final int starValue = i + 1;
+              final bool isSelected = _selectedRating == starValue;
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _selectedRating = isSelected ? null : starValue;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6B7FD7)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF6B7FD7)
+                          : const Color(0xFFD0D5E8),
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$starValue',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF6B7FD7),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.star_rounded,
+                        size: 13,
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFFFFB800),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── TOMBOL RESET & APPLY ──
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  // TODO(backend): _resetFilters() juga panggil controller.clearFilters()
+                  onPressed: _resetFilters,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFD0D5E8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFF9098B1),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  // TODO(backend): _applyFilters() panggil controller.applyFilters()
+                  onPressed: _applyFilters,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B7FD7),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'Apply Filter',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1A1D2E),
       ),
     );
   }
