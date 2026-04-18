@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../cart/cart_page.dart';
+import '../profile/profile_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -90,8 +91,7 @@ class _HomePageState extends State<HomePage> {
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? const Color(0xFF6B7FD7)
                     : const Color(0xFFB0B8CC),
@@ -208,11 +208,8 @@ class HomeContent extends StatelessWidget {
               width: 48,
               height: 48,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.person,
-                color: Color(0xFF6B7FD7),
-                size: 28,
-              ),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 28),
             ),
           ),
         ),
@@ -259,11 +256,7 @@ class HomeContent extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.favorite,
-            color: Color(0xFFFF4D67),
-            size: 22,
-          ),
+          child: const Icon(Icons.favorite, color: Color(0xFFFF4D67), size: 22),
         ),
       ],
     );
@@ -306,11 +299,7 @@ class HomeContent extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 1,
-            height: 24,
-            color: const Color(0xFFE8ECF4),
-          ),
+          Container(width: 1, height: 24, color: const Color(0xFFE8ECF4)),
           const SizedBox(width: 14),
           const Icon(Icons.tune, color: Color(0xFF6B7FD7), size: 22),
           const SizedBox(width: 16),
@@ -322,55 +311,57 @@ class HomeContent extends StatelessWidget {
   // ----------------------------------------------------------
   // BANNER PROMO
   // ----------------------------------------------------------
-Widget _buildBannerPromo() {
-  return Container(
-    width: double.infinity,
-    // Hapus baris height: 150, agar fleksibel
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(20),
-      gradient: const LinearGradient(
-        colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
+  Widget _buildBannerPromo() {
+    return Container(
+      width: double.infinity,
+      // Hapus baris height: 150, agar fleksibel
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
+        ),
       ),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min, // Tambahkan ini agar Column tidak rakus ruang
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Get 30% off on UI Kits',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+      child: Column(
+        mainAxisSize:
+            MainAxisSize.min, // Tambahkan ini agar Column tidak rakus ruang
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Get 30% off on UI Kits',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Limited time offer',
-          style: TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF6B7FD7),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          const SizedBox(height: 4),
+          const Text(
+            'Limited time offer',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
-          child: const Text('Shop Now'),
-        ),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF6B7FD7),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Shop Now'),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ----------------------------------------------------------
   // PRODUCT CARD
   // ----------------------------------------------------------
-  Widget _buildProductCard(
-      Map<String, dynamic> product, BuildContext context) {
+  Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -389,8 +380,9 @@ Widget _buildBannerPromo() {
           // Gambar produk — Expanded agar mengisi ruang tanpa overflow
           Expanded(
             child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: SizedBox(
                 width: double.infinity,
                 child: Image.asset(
@@ -424,8 +416,7 @@ Widget _buildBannerPromo() {
           ),
           // Info produk
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -474,7 +465,8 @@ Widget _buildBannerPromo() {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              '${product['title']} ditambahkan ke keranjang!'),
+                            '${product['title']} ditambahkan ke keranjang!',
+                          ),
                           duration: const Duration(seconds: 2),
                           backgroundColor: const Color(0xFF6B7FD7),
                           behavior: SnackBarBehavior.floating,
@@ -514,11 +506,17 @@ Widget _buildBannerPromo() {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
         } else if (i < rating) {
-          return const Icon(Icons.star_half,
-              color: Color(0xFFFFB800), size: 12);
+          return const Icon(
+            Icons.star_half,
+            color: Color(0xFFFFB800),
+            size: 12,
+          );
         } else {
-          return const Icon(Icons.star_border,
-              color: Color(0xFFD0D5E8), size: 12);
+          return const Icon(
+            Icons.star_border,
+            color: Color(0xFFD0D5E8),
+            size: 12,
+          );
         }
       }),
     );
@@ -553,43 +551,6 @@ class ExplorePage extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               'Temukan produk digital terbaik',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// PROFILE PAGE - Halaman Profil (placeholder)
-// Pindahkan ke: lib/views/profile/profile_page.dart
-// ============================================================
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF0F2F8),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_rounded, size: 64, color: Color(0xFF6B7FD7)),
-            SizedBox(height: 16),
-            Text(
-              'Profil',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D2E),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kelola akun dan pengaturanmu',
               style: TextStyle(color: Color(0xFF9098B1)),
             ),
           ],
