@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../profile/profile_page.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -89,8 +90,7 @@ class _HomePageState extends State<HomePage> {
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? const Color(0xFF6B7FD7)
                     : const Color(0xFFB0B8CC),
@@ -207,11 +207,8 @@ class HomeContent extends StatelessWidget {
               width: 48,
               height: 48,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.person,
-                color: Color(0xFF6B7FD7),
-                size: 28,
-              ),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 28),
             ),
           ),
         ),
@@ -258,11 +255,7 @@ class HomeContent extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.favorite,
-            color: Color(0xFFFF4D67),
-            size: 22,
-          ),
+          child: const Icon(Icons.favorite, color: Color(0xFFFF4D67), size: 22),
         ),
       ],
     );
@@ -305,11 +298,7 @@ class HomeContent extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 1,
-            height: 24,
-            color: const Color(0xFFE8ECF4),
-          ),
+          Container(width: 1, height: 24, color: const Color(0xFFE8ECF4)),
           const SizedBox(width: 14),
           const Icon(Icons.tune, color: Color(0xFF6B7FD7), size: 22),
           const SizedBox(width: 16),
@@ -417,17 +406,16 @@ class HomeContent extends StatelessWidget {
                   icon: const Icon(Icons.shopping_bag_outlined, size: 16),
                   label: const Text(
                     'Shop Now',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF6B7FD7),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -475,8 +463,7 @@ class HomeContent extends StatelessWidget {
   // ----------------------------------------------------------
   // PRODUCT CARD
   // ----------------------------------------------------------
-  Widget _buildProductCard(
-      Map<String, dynamic> product, BuildContext context) {
+  Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -495,8 +482,9 @@ class HomeContent extends StatelessWidget {
           // Gambar produk — Expanded agar mengisi ruang tanpa overflow
           Expanded(
             child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: SizedBox(
                 width: double.infinity,
                 child: Image.asset(
@@ -530,8 +518,7 @@ class HomeContent extends StatelessWidget {
           ),
           // Info produk
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -580,7 +567,8 @@ class HomeContent extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              '${product['title']} ditambahkan ke keranjang!'),
+                            '${product['title']} ditambahkan ke keranjang!',
+                          ),
                           duration: const Duration(seconds: 2),
                           backgroundColor: const Color(0xFF6B7FD7),
                           behavior: SnackBarBehavior.floating,
@@ -620,11 +608,17 @@ class HomeContent extends StatelessWidget {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
         } else if (i < rating) {
-          return const Icon(Icons.star_half,
-              color: Color(0xFFFFB800), size: 12);
+          return const Icon(
+            Icons.star_half,
+            color: Color(0xFFFFB800),
+            size: 12,
+          );
         } else {
-          return const Icon(Icons.star_border,
-              color: Color(0xFFD0D5E8), size: 12);
+          return const Icon(
+            Icons.star_border,
+            color: Color(0xFFD0D5E8),
+            size: 12,
+          );
         }
       }),
     );
@@ -683,8 +677,11 @@ class CartPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.shopping_bag_rounded,
-                size: 64, color: Color(0xFF6B7FD7)),
+            Icon(
+              Icons.shopping_bag_rounded,
+              size: 64,
+              color: Color(0xFF6B7FD7),
+            ),
             SizedBox(height: 16),
             Text(
               'Keranjang',
@@ -697,43 +694,6 @@ class CartPage extends StatelessWidget {
             SizedBox(height: 8),
             Text(
               'Belum ada produk di keranjang',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// PROFILE PAGE - Halaman Profil (placeholder)
-// Pindahkan ke: lib/views/profile/profile_page.dart
-// ============================================================
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF0F2F8),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_rounded, size: 64, color: Color(0xFF6B7FD7)),
-            SizedBox(height: 16),
-            Text(
-              'Profil',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D2E),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kelola akun dan pengaturanmu',
               style: TextStyle(color: Color(0xFF9098B1)),
             ),
           ],

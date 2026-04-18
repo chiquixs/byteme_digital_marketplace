@@ -17,8 +17,6 @@ class _ProfilePageContent extends StatefulWidget {
 }
 
 class _ProfilePageContentState extends State<_ProfilePageContent> {
-  int _selectedIndex = 3; // Profile tab is active by default
-
   // --- Color Palette (from mockup) ---
   static const Color _bgDark = Color(0xFF3D4270);
   static const Color _bgLight = Color(0xFF8B90C1);
@@ -28,53 +26,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   static const Color _iconBg = Color(0xFF3D4270);
   static const Color _starColor = Color(0xFF3D4270);
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    // Navigation logic — swap these with your actual routes/pages
-    switch (index) {
-      case 0:
-        // Navigate to Home
-        // Navigator.pushReplacementNamed(context, '/home');
-        ScaffoldMessenger.of(context).showSnackBar(
-          _snackBar('Navigating to Home'),
-        );
-        break;
-      case 1:
-        // Navigate to Explore
-        // Navigator.pushReplacementNamed(context, '/explore');
-        ScaffoldMessenger.of(context).showSnackBar(
-          _snackBar('Navigating to Explore'),
-        );
-        break;
-      case 2:
-        // Navigate to Cart
-        // Navigator.pushReplacementNamed(context, '/cart');
-        ScaffoldMessenger.of(context).showSnackBar(
-          _snackBar('Navigating to Cart'),
-        );
-        break;
-      case 3:
-        // Already on Profile
-        break;
-    }
-  }
-
-  SnackBar _snackBar(String message) {
-    return SnackBar(
-      content: Text(message),
-      duration: const Duration(milliseconds: 800),
-      backgroundColor: _accentBlue,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgLight,
-      body: SafeArea(
+    return Container(
+      color: _bgLight,
+      child: SafeArea(
         child: Column(
           children: [
             // ── Header ──────────────────────────────────────────────────────
@@ -83,7 +39,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             // ── Scrollable body ─────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -139,9 +98,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           ],
         ),
       ),
-
-      // ── Bottom Navigation Bar ──────────────────────────────────────────────
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -191,7 +147,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
           // Account icon button
           IconButton(
-            icon: const Icon(Icons.manage_accounts_outlined, color: _white, size: 28),
+            icon: const Icon(
+              Icons.manage_accounts_outlined,
+              color: _white,
+              size: 28,
+            ),
             onPressed: () => _showMenuSnack('Account Settings'),
           ),
         ],
@@ -212,7 +172,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -270,7 +230,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               color: _accentBlue.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.image_outlined, color: _accentBlue.withOpacity(0.5)),
+            child: Icon(
+              Icons.image_outlined,
+              color: _accentBlue.withOpacity(0.5),
+            ),
           ),
           const SizedBox(width: 12),
 
@@ -294,10 +257,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     const SizedBox(width: 4),
                     Text(
                       '$rating  $reviews',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -328,7 +288,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               color: Colors.black.withOpacity(0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
-            )
+            ),
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -362,58 +322,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             const Icon(Icons.chevron_right_rounded, color: Colors.grey),
           ],
         ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Bottom Navigation Bar
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          )
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: _white,
-        selectedItemColor: _accentBlue,
-        unselectedItemColor: Colors.grey,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search_rounded),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag_outlined),
-            activeIcon: Icon(Icons.shopping_bag_rounded),
-            label: 'Cart',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
