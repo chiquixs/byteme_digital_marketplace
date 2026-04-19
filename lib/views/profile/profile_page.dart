@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
+import 'package:byteme_digital_marketplace/views/cart/cart_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -56,7 +57,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     _buildMenuItem(
                       icon: Icons.shopping_cart_outlined,
                       label: 'Shopping Cart',
-                      onTap: () => _showMenuSnack('Shopping Cart'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CartPage()),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildMenuItem(
