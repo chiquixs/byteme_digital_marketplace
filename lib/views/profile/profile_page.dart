@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
 import 'package:byteme_digital_marketplace/views/cart/cart_page.dart';
+import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -83,12 +84,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                         MaterialPageRoute(builder: (_) => const HistoryOrdersPage()),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    _buildMenuItem(
-                      icon: Icons.settings_outlined,
-                      label: 'Settings',
-                      onTap: () => _showMenuSnack('Settings'),
-                    ),
 
                     const SizedBox(height: 24),
 
@@ -166,7 +161,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               color: _white,
               size: 28,
             ),
-            onPressed: () => _showMenuSnack('Account Settings'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfilePage()),
+            ),
           ),
         ],
       ),
