@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class CartPage extends StatefulWidget {
-  const CartPage({super.key});
+  final VoidCallback? onBack;
+  const CartPage({super.key, this.onBack});
 
   @override
   State<CartPage> createState() => _CartPageState();
@@ -49,8 +50,14 @@ class _CartPageState extends State<CartPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              } else {
+                widget.onBack?.call();
+              }
+            },
           ),
         ),
         title: const Text(

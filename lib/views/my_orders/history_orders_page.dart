@@ -89,11 +89,18 @@ class HistoryOrdersPage extends StatelessWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       centerTitle: false,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF2A2A2A), size: 20),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
+      leading: Container(
+          margin: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            color: Color(0xFFE8E8F0),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF2A2A2A), size: 20),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
       title: const Text(
         'My Orders',
         style: TextStyle(

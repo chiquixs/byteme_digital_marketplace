@@ -18,11 +18,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  // Daftar halaman untuk bottom navigation bar
-  final List<Widget> _pages = [
+  // Gunakan method ini untuk ganti tab dari halaman manapun
+  void _switchTab(int index) {
+    setState(() => _currentIndex = index);
+  }
+
+  // _pages dibuat sebagai getter agar bisa mengoper callback ke CartPage
+  List<Widget> get _pages => [
     const HomeContent(),
     const ExplorePage(),
-    const CartPage(),
+    CartPage(onBack: () => _switchTab(0)),
     const ProfilePage(),
   ];
 
