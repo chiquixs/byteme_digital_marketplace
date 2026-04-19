@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -68,6 +69,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                       icon: Icons.credit_card_outlined,
                       label: 'Payment',
                       onTap: () => _showMenuSnack('Payment'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMenuItem(
+                      icon: Icons.history_toggle_off,
+                      label: 'History Orders',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HistoryOrdersPage()),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildMenuItem(
