@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -9,19 +12,30 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   // ── Color palette (sama dengan ProfilePage) ──
-  static const Color _bgLight   = Color(0xFF8B90C1);
-  static const Color _bgDark    = Color(0xFF3D4270);
-  static const Color _cardBg    = Color(0xFFF0F0F8);
-  static const Color _accent    = Color(0xFF6B74B2);
-  static const Color _white     = Colors.white;
+  static const Color _bgLight = Color(0xFF8B90C1);
+  static const Color _bgDark = Color(0xFF3D4270);
+  static const Color _cardBg = Color(0xFFF0F0F8);
+  static const Color _accent = Color(0xFF6B74B2);
+  static const Color _white = Colors.white;
 
   // ── Form controllers ──
-  final _usernameCtrl  = TextEditingController(text: 'Burung Camar');
-  final _emailCtrl     = TextEditingController(text: 'camar12345@gamil.com');
-  final _passwordCtrl  = TextEditingController();
-  final _phoneCtrl     = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
 
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with current user data from controller
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userController = context.read<UserController>();
+      _usernameCtrl.text = userController.username;
+      _emailCtrl.text = userController.email;
+    });
+  }
 
   @override
   void dispose() {
@@ -35,33 +49,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgLight,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── AppBar custom ──────────────────────────────────────────────
-            _buildAppBar(context),
+    return Consumer<UserController>(
+      builder: (context, userController, child) {
+        // Initialize controllers with current user data if not already done
+        if (_usernameCtrl.text.isEmpty && userController.username.isNotEmpty) {
+          _usernameCtrl.text = userController.username;
+          _emailCtrl.text = userController.email;
+        }
 
-            // ── Scrollable body ───────────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Foto profil section
-                    _buildPhotoSection(),
+        return Scaffold(
+          backgroundColor: _bgLight,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── AppBar custom ──────────────────────────────────────────────
+                _buildAppBar(context),
 
-                    // Form section
-                    _buildFormSection(),
-                  ],
+                // ── Scrollable body ───────────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Foto profil section
+                        _buildPhotoSection(userController),
+
+                        // Form section
+                        _buildFormSection(userController),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-      // Bottom nav bar (non-interaktif, dekoratif)
-      bottomNavigationBar: _buildBottomNavBar(),
+          ),
+        );
+      },
     );
   }
 
@@ -98,7 +120,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   // ─────────────────────────────────────────────────────────────────────────
   // Photo section (area besar + tombol upload)
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildPhotoSection() {
+  Widget _buildPhotoSection(UserController userController) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       width: double.infinity,
@@ -110,6 +132,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Foto profil - dari controller
           Container(
             width: 90,
             height: 90,
@@ -117,26 +140,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
               shape: BoxShape.circle,
               color: _bgLight.withOpacity(0.4),
               border: Border.all(color: _bgDark.withOpacity(0.3), width: 2),
+              image: userController.profileImagePath != null
+                  ? DecorationImage(
+                      image: FileImage(File(userController.profileImagePath!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Icon(Icons.person, color: _bgDark, size: 48),
+            child: userController.profileImagePath == null
+                ? const Icon(Icons.person, color: _bgDark, size: 48)
+                : null,
           ),
-          const SizedBox(height: 20), // ini margin-nya, tinggal atur angkanya
+          const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: _onUploadPhoto,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: _white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                icon: const Icon(Icons.upload_rounded, size: 16),
-                label: const Text(
-                  'Upload a New Photo',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
+            onPressed: () => _onUploadPhoto(userController),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accent,
+              foregroundColor: _white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            icon: const Icon(Icons.upload_rounded, size: 16),
+            label: const Text(
+              'Upload a New Photo',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -146,7 +177,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   // ─────────────────────────────────────────────────────────────────────────
   // Form section
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildFormSection() {
+  Widget _buildFormSection(UserController userController) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
@@ -197,7 +228,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: _onUpdate,
+              onPressed: () => _onUpdate(userController),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accent,
                 foregroundColor: _white,
@@ -208,10 +239,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               child: const Text(
                 'Update',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -247,8 +275,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: InputDecoration(
             filled: true,
             fillColor: _cardBg,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -290,8 +320,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: InputDecoration(
             filled: true,
             fillColor: _cardBg,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -322,89 +354,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Bottom nav bar dekoratif (sama persis dengan app utama)
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.home_rounded, 'Home', false),
-              _navItem(Icons.explore_rounded, 'Explore', false),
-              _navItem(Icons.shopping_bag_rounded, 'Cart', false),
-              _navItem(Icons.person_rounded, 'Profile', true),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: active
-            ? const Color(0xFF6B7FD7).withOpacity(0.12)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              color: active
-                  ? const Color(0xFF6B7FD7)
-                  : const Color(0xFFB0B8CC),
-              size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active
-                  ? const Color(0xFF6B7FD7)
-                  : const Color(0xFFB0B8CC),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   // Handlers
   // ─────────────────────────────────────────────────────────────────────────
-  void _onUploadPhoto() {
-    // TODO: Integrasikan image_picker di sini
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Fitur upload foto belum tersedia'),
-        backgroundColor: _bgDark,
-        duration: const Duration(milliseconds: 1200),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+  void _onUploadPhoto(UserController userController) async {
+    await userController.pickProfileImage();
+
+    if (userController.profileImagePath != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Foto profil berhasil diubah!'),
+          backgroundColor: _bgDark,
+          duration: const Duration(milliseconds: 1200),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
-  void _onUpdate() {
-    // TODO: Panggil UserController.updateProfile() di sini
+  void _onUpdate(UserController userController) {
+    // Update profile data through controller
+    userController.updateUsername(_usernameCtrl.text);
+    userController.updateEmail(_emailCtrl.text);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Profil berhasil diperbarui!'),

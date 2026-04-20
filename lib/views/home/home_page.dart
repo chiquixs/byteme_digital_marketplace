@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import '../cart/cart_page.dart';
 import '../profile/profile_page.dart';
 import '../eksplore/eksplore_page.dart';
@@ -237,85 +240,104 @@ class _HomeContentState extends State<HomeContent> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildSearchBar(),
-                  // Filter panel — expand/collapse saat tombol filter diklik
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: _isFilterOpen
-                        ? _buildFilterSection()
-                        : const SizedBox.shrink(),
+    return Consumer<UserController>(
+      builder: (context, userController, child) {
+        return SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildHeader(userController),
+                      const SizedBox(height: 20),
+                      _buildSearchBar(),
+                      // Filter panel — expand/collapse saat tombol filter diklik
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: _isFilterOpen
+                            ? _buildFilterSection()
+                            : const SizedBox.shrink(),
+                      ),
+                      // Active filter chips — muncul setelah Apply Filter
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: _hasActiveFilter && !_isFilterOpen
+                            ? _buildActiveFilterChips()
+                            : const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildBannerPromo(),
+                      const SizedBox(height: 28),
+                      // _buildSectionHeader(),
+                      // const SizedBox(height: 16),
+                    ],
                   ),
-                  // Active filter chips — muncul setelah Apply Filter
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    child: _hasActiveFilter && !_isFilterOpen
-                        ? _buildActiveFilterChips()
-                        : const SizedBox.shrink(),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) =>
+                        _buildProductCard(_products[index], context),
+                    childCount: _products.length,
                   ),
-                  const SizedBox(height: 20),
-                  _buildBannerPromo(),
-                  const SizedBox(height: 28),
-                  // _buildSectionHeader(),
-                  // const SizedBox(height: 16),
-                ],
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.60,
+                  ),
+                ),
               ),
-            ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            ],
           ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) =>
-                    _buildProductCard(_products[index], context),
-                childCount: _products.length,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 0.60,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // ----------------------------------------------------------
   // HEADER: Greeting + Avatar + Wishlist
   // ----------------------------------------------------------
-  Widget _buildHeader() {
+  Widget _buildHeader(UserController userController) {
     return Row(
       children: [
-        // ⚠️ GANTI: Simpan foto profil di assets/images/avatar.png
+        // Avatar - menggunakan foto dari UserController (sama dengan ProfilePage)
         CircleAvatar(
           radius: 24,
           backgroundColor: const Color(0xFFD0D5E8),
           child: ClipOval(
-            child: Image.asset(
-              'assets/images/profile.jpeg',
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 28),
-            ),
+            child: userController.profileImagePath != null
+                ? Image.file(
+                    File(userController.profileImagePath!),
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Color(0xFF6B7FD7),
+                      size: 28,
+                    ),
+                  )
+                : Image.asset(
+                    'assets/images/profile.jpeg',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Color(0xFF6B7FD7),
+                      size: 28,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 12),
@@ -323,16 +345,16 @@ class _HomeContentState extends State<HomeContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
+              children: [
                 Text(
-                  'Hi! ',
-                  style: TextStyle(
+                  'Hi, ${userController.username.split(' ').first}! ',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF1A1D2E),
                   ),
                 ),
-                Text('🧡', style: TextStyle(fontSize: 18)),
+                const Text('🧡', style: TextStyle(fontSize: 18)),
               ],
             ),
             const Text(
@@ -414,18 +436,17 @@ class _HomeContentState extends State<HomeContent> {
             onTap: () => setState(() => _isFilterOpen = !_isFilterOpen),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Icon(
                 Icons.tune,
                 // Icon berubah warna: merah kalau ada filter aktif tapi panel tutup
                 color: _isFilterOpen
                     ? const Color(0xFF6B7FD7)
                     : (_selectedCategory != null ||
-                            _selectedPriceRange != null ||
-                            _selectedRating != null)
-                        ? const Color(0xFFFF4D67)
-                        : const Color(0xFF6B7FD7),
+                          _selectedPriceRange != null ||
+                          _selectedRating != null)
+                    ? const Color(0xFFFF4D67)
+                    : const Color(0xFF6B7FD7),
                 size: 22,
               ),
             ),
@@ -473,7 +494,9 @@ class _HomeContentState extends State<HomeContent> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6B7FD7)
@@ -520,7 +543,9 @@ class _HomeContentState extends State<HomeContent> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6B7FD7)
@@ -567,7 +592,9 @@ class _HomeContentState extends State<HomeContent> {
                   duration: const Duration(milliseconds: 150),
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6B7FD7)
@@ -619,7 +646,8 @@ class _HomeContentState extends State<HomeContent> {
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFD0D5E8)),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   child: const Text(
@@ -643,15 +671,13 @@ class _HomeContentState extends State<HomeContent> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   child: const Text(
                     'Apply Filter',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                 ),
               ),
@@ -702,7 +728,9 @@ class _HomeContentState extends State<HomeContent> {
                       return Container(
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF6B7FD7),
                           borderRadius: BorderRadius.circular(20),
