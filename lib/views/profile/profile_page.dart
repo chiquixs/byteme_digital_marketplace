@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
 import 'package:byteme_digital_marketplace/views/cart/cart_page.dart';
 import 'edit_profile_page.dart';
@@ -31,95 +34,102 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _bgLight,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──────────────────────────────────────────────────────
-            _buildHeader(),
+    // Listen to UserController for profile data
+    return Consumer<UserController>(
+      builder: (context, userController, child) {
+        return Container(
+          color: _bgLight,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // ── Header ──────────────────────────────────────────────────────
+                _buildHeader(userController),
 
-            // ── Scrollable body ─────────────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Recent / purchase card section
-                    _buildPurchaseCard(),
-
-                    const SizedBox(height: 16),
-
-                    // Menu items
-                    _buildMenuItem(
-                      icon: Icons.shopping_cart_outlined,
-                      label: 'Shopping Cart',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CartPage()),
-                      ),
+                // ── Scrollable body ─────────────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    const SizedBox(height: 12),
-                    _buildMenuItem(
-                      icon: Icons.favorite_border,
-                      label: 'Wishlist',
-                      onTap: () => _showMenuSnack('Wishlist'),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMenuItem(
-                      icon: Icons.credit_card_outlined,
-                      label: 'Payment',
-                      onTap: () => _showMenuSnack('Payment'),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMenuItem(
-                      icon: Icons.history_toggle_off,
-                      label: 'History Orders',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const HistoryOrdersPage()),
-                      ),
-                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Recent / purchase card section
+                        _buildPurchaseCard(),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                    // Footer branding
-                    Center(
-                      child: Text(
-                        'ByteMe',
-                        style: TextStyle(
-                          color: _accentBlue,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          letterSpacing: 1.2,
+                        // Menu items
+                        _buildMenuItem(
+                          icon: Icons.shopping_cart_outlined,
+                          label: 'Shopping Cart',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CartPage()),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        _buildMenuItem(
+                          icon: Icons.favorite_border,
+                          label: 'Wishlist',
+                          onTap: () => _showMenuSnack('Wishlist'),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuItem(
+                          icon: Icons.credit_card_outlined,
+                          label: 'Payment',
+                          onTap: () => _showMenuSnack('Payment'),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuItem(
+                          icon: Icons.history_toggle_off,
+                          label: 'History Orders',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const HistoryOrdersPage(),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Footer branding
+                        Center(
+                          child: Text(
+                            'ByteMe',
+                            style: TextStyle(
+                              color: _accentBlue,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Header
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  Widget _buildHeader(UserController userController) {
     return Container(
       color: _bgDark,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Avatar
+          // Avatar - menggunakan foto dari controller
           Container(
             width: 56,
             height: 56,
@@ -127,28 +137,36 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               shape: BoxShape.circle,
               color: Colors.white24,
               border: Border.all(color: Colors.white38, width: 2),
+              image: userController.profileImagePath != null
+                  ? DecorationImage(
+                      image: FileImage(File(userController.profileImagePath!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Icon(Icons.person, color: _white, size: 32),
+            child: userController.profileImagePath == null
+                ? const Icon(Icons.person, color: _white, size: 32)
+                : null,
           ),
           const SizedBox(width: 14),
 
-          // Name & email
+          // Name & email - menggunakan data dari controller
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Burung Camar',
-                  style: TextStyle(
+                  userController.username,
+                  style: const TextStyle(
                     color: _white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'camar12345@gamil.com',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  userController.email,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
@@ -194,7 +212,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
             child: Text(
-              'Lorem Ipsum',
+              'Current Order',
               style: TextStyle(
                 color: _accentBlue,
                 fontWeight: FontWeight.bold,
@@ -206,7 +224,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           const Divider(height: 1, thickness: 0.5),
 
           _buildProductRow(
-            title: 'Bintang 5 tapi ku bukan ancaman',
+            title: 'Barang 1',
             rating: 5,
             reviews: '1.2k reviews',
           ),
@@ -214,7 +232,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           const Divider(height: 1, thickness: 0.5, indent: 16),
 
           _buildProductRow(
-            title: 'Lorem Ipsum',
+            title: 'Barang 2',
             rating: 5,
             reviews: '1.2k reviews',
             isLast: true,
