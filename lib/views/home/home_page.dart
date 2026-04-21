@@ -164,8 +164,8 @@ class HomeContent extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildBannerPromo(),
                   const SizedBox(height: 28),
-                  // _buildSectionHeader(),
-                  // const SizedBox(height: 16),
+                  _buildSectionHeader(),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -363,6 +363,35 @@ Widget _buildBannerPromo() {
         ),
       ],
     ),
+  );
+}
+
+Widget _buildSectionHeader() {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      const Text(
+        'Best Seller Product',
+        style: TextStyle(
+          fontSize: 18, // Ukuran disesuaikan
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1A1D2E),
+        ),
+      ),
+      GestureDetector(
+        onTap: () {
+          // Navigasi ke halaman produk lengkap
+        },
+        child: const Text(
+          'more >',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF6B7FD7), // Warna ungu kebiruan
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ],
   );
 }
 
