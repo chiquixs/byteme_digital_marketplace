@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-// 1. Ubah import ini agar memanggil file home_page.dart
-import 'package:byteme_digital_marketplace/views/home/home_page.dart'; 
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/views/home/home_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,15 +12,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Digital Marketplace',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A72C6)),
+    return ChangeNotifierProvider(
+      create: (_) => UserController(),
+      child: MaterialApp(
+        title: 'ByteMe Digital Marketplace',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A72C6)),
+        ),
+        home: const HomePage(),
       ),
-      // 2. Arahkan kembali ke HomePage agar Bottom Navigation-nya aktif
-      home: const HomePage(), 
     );
   }
 }
