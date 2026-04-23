@@ -70,20 +70,80 @@ class HistoryOrdersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<OrderItem> unratedOrders = _orders.where((o) => o.rating == 0).toList();
+    final List<OrderItem> ratedOrders = _orders.where((o) => o.rating > 0).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8E8F0),
       appBar: _buildAppBar(context),
       body: _orders.isEmpty
           ? _buildEmpty()
-          : ListView.builder(
+          : ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: _orders.length,
-              itemBuilder: (context, index) =>
-                  _OrderCard(order: _orders[index]),
+              children: [
+                
+                // --- BAGIAN 1: MENUNGGU PENILAIAN ---
+                if (unratedOrders.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12, left: 4),
+                    child: Text(
+                      'Menunggu Penilaian',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2A2A2A), // Warna teks menyesuaikan temamu
+                      ),
+                    ),
+                  ),
+                  // Tampilkan card untuk setiap item yang belum dinilai
+                  ...unratedOrders.map((order) => _OrderCard(order: order)),
+                ],
+
+                // --- BAGIAN 2: GARIS PEMISAH --
+                if (unratedOrders.isNotEmpty && ratedOrders.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Row(
+                      children: [
+                        Expanded(child: Divider(color: Color(0xFFD0D0E0), thickness: 1)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'Selesai Dinilai',
+                            style: TextStyle(
+                              color: Color(0xFF8B90C1),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Color(0xFFD0D0E0), thickness: 1)),
+                      ],
+                    ),
+                  ),
+
+                // --- BAGIAN 3: RIWAYAT / SUDAH DINILAI ---
+                if (ratedOrders.isNotEmpty) ...[
+                  if (unratedOrders.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12, left: 4),
+                      child: Text(
+                        'Riwayat Penilaian',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2A2A2A),
+                        ),
+                      ),
+                    ),
+                  
+                  ...ratedOrders.map((order) => _OrderCard(order: order)),
+                ],
+                
+              ],
             ),
     );
   }
-
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,

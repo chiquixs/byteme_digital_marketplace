@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart'; // Jangan lupa import ini!
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class CartPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -11,6 +11,7 @@ class CartPage extends StatefulWidget {
 
 class _CartPageState extends State<CartPage> {
   bool isSelectAll = false;
+  
   List<Map<String, dynamic>> cartItems = [
     {'id': 1, 'store': 'Official Store', 'name': 'Girls E-Book', 'price': 'Rp 78.000', 'qty': 1, 'selected': false, 'color': Colors.blue.shade100},
     {'id': 2, 'store': 'Official Store', 'name': 'Materials E-Book', 'price': 'Rp 59.000', 'qty': 1, 'selected': false, 'color': Colors.blue.shade300},
@@ -36,69 +37,47 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
-  /// Fungsi konfirmasi
   void _showDeleteConfirmation(BuildContext context, int index, String itemName) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
-              mainAxisSize: MainAxisSize.min, 
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Baris Judul dengan Ikon Kecil
                 Row(
                   children: [
                     Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 22),
                     const SizedBox(width: 8),
                     const Text(
                       "Remove Item",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                
-                // Teks Pesan (Sederhana)
                 Text(
                   "Are you sure you want to remove this item from your cart?",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.4),
                 ),
                 const SizedBox(height: 24),
-                
-                // Tombol Aksi di Pojok Kanan
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600),
-                      ),
+                      child: Text("Cancel", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade400,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
@@ -106,22 +85,8 @@ class _CartPageState extends State<CartPage> {
                           cartItems.removeAt(index);
                           checkSelectAllStatus();
                         });
-                        
-                        // Notifikasi Snackbar Minimalis
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Item removed from cart"),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Colors.black87,
-                            duration: const Duration(seconds: 1),
-                            width: 250, // Snackbar lebih kecil/pendek
-                          ),
-                        );
                       },
-                      child: const Text(
-                        "Remove",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                      child: const Text("Remove", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -136,18 +101,18 @@ class _CartPageState extends State<CartPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF2F9),
+      backgroundColor: const Color(0xFFE8E8F0), 
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: Container(
           margin: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFE8E8F0),
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2A2A2A), size: 20),
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.of(context).pop();
@@ -159,155 +124,134 @@ class _CartPageState extends State<CartPage> {
         ),
         title: const Text(
           'My Cart',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Color(0xFF2A2A2A), fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Expanded(
+      body: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0), 
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(12), 
                 ),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: cartItems.length,
-                  separatorBuilder: (context, index) => const Divider(
-                    color: Colors.grey,
-                    thickness: 0.2,
-                    height: 30,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = cartItems[index];
-                    
-                    // GANTI DISMISSIBLE DENGAN SLIDABLE
-                    return Slidable(
-                      key: ValueKey(item['id']),
-                      
-                      // Mengatur aksi saat digeser dari kanan ke kiri (endActionPane)
-                      endActionPane: ActionPane(
-                        // Motion menentukan efek animasi saat digeser
-                        motion: const ScrollMotion(),
-                        
-                        // extentRatio mengatur seberapa lebar tombolnya relatif terhadap item
-                        extentRatio: 0.25, 
-                        
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12), 
+                  child: ListView.separated(
+                    itemCount: cartItems.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1, thickness: 0.2),
+                    itemBuilder: (context, index) {
+                      final item = cartItems[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Ini adalah tombol Delete yang muncul saat digeser
-                          CustomSlidableAction(
-                            onPressed: (context) {
-                              // Panggil fungsi konfirmasi saat tombol ditekan
-                              _showDeleteConfirmation(context, index, item['name']);
-                            },
-                            backgroundColor: Colors.red.shade400,
-                            foregroundColor: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          // Header Toko
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                            child: Row(
                               children: [
-                                Icon(Icons.delete_outline, size: 28),
-                                SizedBox(height: 4),
-                                Text('Remove', style: TextStyle(fontSize: 12)),
+                                const Icon(Icons.storefront_outlined, size: 16, color: Color(0xFF3D4270)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  item['store'],
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF3D4270)),
+                                ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                      
-                      // Isi konten tetap sama
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const SizedBox(width: 8),
-                              const Icon(Icons.store_mall_directory_outlined, size: 18, color: Colors.black87),
-                              const SizedBox(width: 6),
-                              Text(
-                                item['store'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Colors.black87,
+                          const Divider(height: 1, thickness: 0.5, color: Color(0xFFE0E0E0)),
+                          
+                          // Slidable hanya di bagian produk
+                          Slidable(
+                            key: ValueKey(item['id']),
+                            endActionPane: ActionPane(
+                              motion: const ScrollMotion(),
+                              extentRatio: 0.25,
+                              children: [
+                                CustomSlidableAction(
+                                  onPressed: (context) => _showDeleteConfirmation(context, index, item['name']),
+                                  backgroundColor: Colors.red.shade400,
+                                  foregroundColor: Colors.white,
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.delete_outline, size: 24),
+                                      Text('Remove', style: TextStyle(fontSize: 10)),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: item['selected'],
-                                onChanged: (value) {
-                                  setState(() {
-                                    item['selected'] = value;
-                                    checkSelectAllStatus();
-                                  });
-                                },
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                activeColor: const Color(0xFF5A72C6),
-                              ),
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: item['color'],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.image, color: Colors.white),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      item['name'],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    child: Checkbox(
+                                      value: item['selected'],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          item['selected'] = value;
+                                          checkSelectAllStatus();
+                                        });
+                                      },
+                                      activeColor: const Color(0xFF5A72C6),
                                     ),
-                                    const SizedBox(height: 4), 
-                                    Text(
-                                      item['price'],
-                                      style: const TextStyle(
-                                        color: Color(0xFF5A72C6),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: item['color'],
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ],
-                                ),
+                                    child: const Icon(Icons.image_outlined, color: Colors.white, size: 24),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['name'],
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF2A2A2A)),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item['price'],
+                                          style: const TextStyle(color: Color(0xFF5A72C6), fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ],
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
+          ),
+          
+          // Bottom Checkout
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+            ),
+            child: SafeArea(
               child: Column(
                 children: [
                   Row(
@@ -315,21 +259,11 @@ class _CartPageState extends State<CartPage> {
                       Checkbox(
                         value: isSelectAll,
                         onChanged: toggleSelectAll,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
                         activeColor: const Color(0xFF5A72C6),
                       ),
-                      const Text('Semua', style: TextStyle(fontWeight: FontWeight.w500)),
+                      const Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
                       const Spacer(),
-                      const Text(
-                        'Rp: 10.000',
-                        style: TextStyle(
-                          color: Color(0xFF5A72C6),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                      const Text('Rp: 10.000', style: TextStyle(color: Color(0xFF5A72C6), fontWeight: FontWeight.bold, fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -339,27 +273,18 @@ class _CartPageState extends State<CartPage> {
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF5A72C6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
                       onPressed: () {},
-                      child: const Text(
-                        'Checkout',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: const Text('Checkout', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
