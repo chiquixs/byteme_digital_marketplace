@@ -3,32 +3,36 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UserController extends ChangeNotifier {
-  // Default user data
+  // Data user (Default)
   String _username = 'Burung Camar';
-  String _email = 'camar12345@gamil.com';
+  String _email = 'camar12345@gmail.com';
+  String _phoneNumber = '(+62) 812-5555-7777'; 
   String? _profileImagePath;
 
   // Getters
   String get username => _username;
   String get email => _email;
+  String get phoneNumber => _phoneNumber; // <-- TAMBAHAN BARU
   String? get profileImagePath => _profileImagePath;
 
-  // Image picker instance
   final ImagePicker _picker = ImagePicker();
 
-  /// Update username
   void updateUsername(String newUsername) {
     _username = newUsername;
     notifyListeners();
   }
 
-  /// Update email
   void updateEmail(String newEmail) {
     _email = newEmail;
     notifyListeners();
   }
 
-  /// Pick image from gallery and update profile photo
+  // Tambahan baru untuk update No HP
+  void updatePhoneNumber(String newPhone) {
+    _phoneNumber = newPhone;
+    notifyListeners();
+  }
+
   Future<void> pickProfileImage() async {
     try {
       final XFile? image = await _picker.pickImage(
@@ -47,19 +51,20 @@ class UserController extends ChangeNotifier {
     }
   }
 
-  /// Update full profile
+  // Update profile lengkap (Ditambah Phone)
   void updateProfile({
     String? username,
     String? email,
+    String? phoneNumber,
     String? profileImagePath,
   }) {
     if (username != null) _username = username;
     if (email != null) _email = email;
+    if (phoneNumber != null) _phoneNumber = phoneNumber;
     if (profileImagePath != null) _profileImagePath = profileImagePath;
     notifyListeners();
   }
 
-  /// Clear profile image (reset to default)
   void clearProfileImage() {
     _profileImagePath = null;
     notifyListeners();
