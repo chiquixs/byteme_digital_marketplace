@@ -36,148 +36,91 @@ class _CartPageState extends State<CartPage> {
     });
   }
 
-  // Fungsi untuk memunculkan dialog konfirmasi hapus
+  /// Fungsi konfirmasi
   void _showDeleteConfirmation(BuildContext context, int index, String itemName) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Agar tinggi dialog menyesuaikan isi
+              mainAxisSize: MainAxisSize.min, 
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ikon Tempat Sampah di atas
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.delete_sweep_rounded,
-                    color: Colors.red.shade400,
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                
-                // Judul Konfirmasi
-                const Text(
-                  "Hapus Item?",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                // Baris Judul dengan Ikon Kecil
+                Row(
+                  children: [
+                    Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 22),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Remove Item",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 
-                // Pesan Konfirmasi
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: const TextStyle(fontSize: 14, color: Colors.black54, height: 1.5),
-                    children: [
-                      const TextSpan(text: "Apakah kamu yakin ingin menghapus\n"),
-                      TextSpan(
-                        text: itemName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                      ),
-                      const TextSpan(text: " dari keranjang?"),
-                    ],
+                // Teks Pesan (Sederhana)
+                Text(
+                  "Are you sure you want to remove this item from your cart?",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 
-                // Baris Tombol Action
+                // Tombol Aksi di Pojok Kanan
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // Tombol Batal
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          "Batal",
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(width: 12), // Jarak antar tombol
-                    
-                    // Tombol Hapus
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade400,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade400,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        onPressed: () {
-                          Navigator.of(context).pop(); // Tutup dialog
-                          setState(() {
-                            cartItems.removeAt(index); // Hapus item
-                            checkSelectAllStatus(); // Update status checkbox
-                          });
-                          
-                          // Notifikasi cantik
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.check_circle_outline, color: Colors.white),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Text('$itemName dihapus')),
-                                ],
-                              ),
-                              backgroundColor: Colors.black87,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              margin: const EdgeInsets.all(16),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Hapus",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          cartItems.removeAt(index);
+                          checkSelectAllStatus();
+                        });
+                        
+                        // Notifikasi Snackbar Minimalis
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Item removed from cart"),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.black87,
+                            duration: const Duration(seconds: 1),
+                            width: 250, // Snackbar lebih kecil/pendek
                           ),
-                        ),
+                        );
+                      },
+                      child: const Text(
+                        "Remove",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -271,7 +214,7 @@ class _CartPageState extends State<CartPage> {
                               children: [
                                 Icon(Icons.delete_outline, size: 28),
                                 SizedBox(height: 4),
-                                Text('Hapus', style: TextStyle(fontSize: 12)),
+                                Text('Remove', style: TextStyle(fontSize: 12)),
                               ],
                             ),
                           ),
