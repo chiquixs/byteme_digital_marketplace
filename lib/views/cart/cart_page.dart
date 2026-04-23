@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:intl/intl.dart'; // Untuk format Rupiah
+import '../checkout/checkout_page.dart'; // Sesuaikan dengan path folder kamu
 
 class CartPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -20,6 +22,30 @@ class _CartPageState extends State<CartPage> {
     {'id': 5, 'store': 'Official Store', 'name': 'Project Proposal', 'price': 'Rp 120.000', 'qty': 1, 'selected': false, 'color': Colors.brown.shade200},
     {'id': 6, 'store': 'Official Store', 'name': 'Web Design', 'price': 'Rp 150.000', 'qty': 1, 'selected': false, 'color': Colors.blue.shade800},
   ];
+
+  // --- LOGIKA PERHITUNGAN DINAMIS ---
+
+  // Fungsi untuk mengubah String harga ke Integer agar bisa dihitung
+  int _parsePrice(String priceStr) {
+    String cleanStr = priceStr.replaceAll(RegExp(r'[^0-9]'), '');
+    return int.tryParse(cleanStr) ?? 0;
+  }
+
+  // Fungsi menghitung total harga item yang dipilih saja
+  int _calculateTotal() {
+    int total = 0;
+    for (var item in cartItems) {
+      if (item['selected'] == true) {
+        total += _parsePrice(item['price']) * (item['qty'] as int);
+      }
+    }
+    return total;
+  }
+
+  // Fungsi format angka ke Rupiah
+  String _formatRupiah(int number) {
+    return NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(number);
+  }
 
   void toggleSelectAll(bool? value) {
     setState(() {
@@ -100,6 +126,9 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Menghitung total harga terbaru setiap kali widget dirender ulang
+    int totalPrice = _calculateTotal();
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8E8F0), 
       appBar: AppBar(
@@ -147,7 +176,6 @@ class _CartPageState extends State<CartPage> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header Toko
                           Padding(
                             padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                             child: Row(
@@ -162,8 +190,6 @@ class _CartPageState extends State<CartPage> {
                             ),
                           ),
                           const Divider(height: 1, thickness: 0.5, color: Color(0xFFE0E0E0)),
-                          
-                          // Slidable hanya di bagian produk
                           Slidable(
                             key: ValueKey(item['id']),
                             endActionPane: ActionPane(
@@ -244,12 +270,12 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
           
-          // Bottom Checkout
           Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
             ),
             child: SafeArea(
               child: Column(
@@ -263,7 +289,11 @@ class _CartPageState extends State<CartPage> {
                       ),
                       const Text('Select All', style: TextStyle(fontWeight: FontWeight.w500)),
                       const Spacer(),
-                      const Text('Rp: 10.000', style: TextStyle(color: Color(0xFF5A72C6), fontWeight: FontWeight.bold, fontSize: 16)),
+                      // TOTAL HARGA DINAMIS BERDASARKAN SELEKSI
+                      Text(
+                        _formatRupiah(totalPrice), 
+                        style: const TextStyle(color: Color(0xFF5A72C6), fontWeight: FontWeight.bold, fontSize: 18)
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -276,7 +306,28 @@ class _CartPageState extends State<CartPage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        // FILTER ITEM YANG DIPILIH
+                        final selectedItems = cartItems.where((item) => item['selected'] == true).toList();
+
+                        if (selectedItems.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please select at least one item to checkout!'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        } else {
+                          // PINDAH KE HALAMAN CHECKOUT DENGAN DATA
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CheckoutPage(selectedItems: selectedItems),
+                            ),
+                          );
+                        }
+                      },
                       child: const Text('Checkout', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
