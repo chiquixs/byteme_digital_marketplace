@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:byteme_digital_marketplace/controller/user_controller.dart';
-import 'package:byteme_digital_marketplace/views/payment/unpaid_order.dart'; // Import halaman timer
+import 'package:byteme_digital_marketplace/controller/buyer/user_controller.dart';
+import 'package:byteme_digital_marketplace/views/buyer/payment/unpaid_order.dart'; // Import halaman timer
 import 'payment_selection_page.dart';
 
 class CheckoutPage extends StatefulWidget {

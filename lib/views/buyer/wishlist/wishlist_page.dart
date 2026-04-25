@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../product/product_detail_page.dart';
-import '../../utils/cart_manager.dart';
+import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
 // WISHLIST PAGE - Produk yang di-like

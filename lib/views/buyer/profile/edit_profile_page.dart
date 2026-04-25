@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/user_controller.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});

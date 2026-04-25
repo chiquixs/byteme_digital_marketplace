@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:byteme_digital_marketplace/controller/user_controller.dart';
-import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
-import 'package:byteme_digital_marketplace/views/wishlist/wishlist_page.dart'; 
-import 'package:byteme_digital_marketplace/views/payment/unpaid_order.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/user_controller.dart';
+import 'package:byteme_digital_marketplace/views/buyer/my_orders/history_orders_page.dart';
+import 'package:byteme_digital_marketplace/views/buyer/wishlist/wishlist_page.dart'; 
+import 'package:byteme_digital_marketplace/views/buyer/payment/unpaid_order.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
