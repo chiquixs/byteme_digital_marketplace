@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../product/product_detail_page.dart';
+import '../../utils/cart_manager.dart';
 
 // ============================================================
 // EXPLORE PAGE - Digital Product Marketplace
@@ -539,7 +541,14 @@ class _ExplorePageState extends State<ExplorePage> {
   // ----------------------------------------------------------
   Widget _buildProductCard(
       Map<String, dynamic> product, BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailPage(product: product),
+        ),
+      ),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -652,12 +661,18 @@ class _ExplorePageState extends State<ExplorePage> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
+                      final added = CartManager.instance.addToCart(product);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              '${product['title']} ditambahkan ke keranjang!'),
+                            added
+                                ? '${product['title']} ditambahkan ke keranjang!'
+                                : '${product['title']} sudah ada di keranjang',
+                          ),
                           duration: const Duration(seconds: 2),
-                          backgroundColor: const Color(0xFF6B7FD7),
+                          backgroundColor: added
+                              ? const Color(0xFF6B7FD7)
+                              : const Color(0xFF9098B1),
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
@@ -682,7 +697,8 @@ class _ExplorePageState extends State<ExplorePage> {
           ),
         ],
       ),
-    );
+    ), // Container
+    ); // GestureDetector
   }
 
   Widget _buildStarRating(double rating) {

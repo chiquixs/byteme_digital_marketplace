@@ -6,6 +6,9 @@ import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import '../cart/cart_page.dart';
 import '../profile/profile_page.dart';
 import '../eksplore/eksplore_page.dart';
+import '../product/product_detail_page.dart';
+import '../wishlist/wishlist_page.dart';
+import '../../utils/cart_manager.dart';
 
 // ============================================================
 // HOME PAGE - Digital Product Marketplace
@@ -27,7 +30,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<Widget> get _pages => [
-    const HomeContent(),
+    HomeContent(onNavigateToExplore: () => _switchTab(1)),
     const ExplorePage(),
     CartPage(onBack: () => _switchTab(0)),
     const ProfilePage(),
@@ -116,7 +119,8 @@ class _HomePageState extends State<HomePage> {
 // HOME CONTENT
 // ============================================================
 class HomeContent extends StatefulWidget {
-  const HomeContent({super.key});
+  final VoidCallback? onNavigateToExplore;
+  const HomeContent({super.key, this.onNavigateToExplore});
 
   @override
   State<HomeContent> createState() => _HomeContentState();
@@ -266,9 +270,7 @@ class _HomeContentState extends State<HomeContent> {
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
                   child: _buildSectionHeader(
                     '🔥 Paling Banyak Dibeli',
-                    onMore: () {
-                      // TODO: Navigate ke product list dengan filter terlaris
-                    },
+                    onMore: widget.onNavigateToExplore,
                   ),
                 ),
               ),
@@ -294,9 +296,7 @@ class _HomeContentState extends State<HomeContent> {
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
                   child: _buildSectionHeader(
                     '🔍 Paling Banyak Dicari',
-                    onMore: () {
-                      // TODO: Navigate ke product list dengan filter trending
-                    },
+                    onMore: widget.onNavigateToExplore,
                   ),
                 ),
               ),
@@ -388,21 +388,27 @@ class _HomeContentState extends State<HomeContent> {
           ],
         ),
         const Spacer(),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WishlistPage()),
           ),
-          child: const Icon(Icons.favorite, color: Color(0xFFFF4D67), size: 22),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.favorite, color: Color(0xFFFF4D67), size: 22),
+          ),
         ),
       ],
     );
@@ -563,7 +569,14 @@ class _HomeContentState extends State<HomeContent> {
     Map<String, dynamic> product,
     BuildContext context,
   ) {
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailPage(product: product),
+        ),
+      ),
+      child: Container(
       width: 155,
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
@@ -683,7 +696,7 @@ class _HomeContentState extends State<HomeContent> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => _showAddedToCart(context, product['title']),
+                    onPressed: () => _showAddedToCart(context, product),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6B7FD7),
                       foregroundColor: Colors.white,
@@ -705,6 +718,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
         ],
       ),
+    ), // GestureDetector
     );
   }
 
@@ -715,7 +729,14 @@ class _HomeContentState extends State<HomeContent> {
     Map<String, dynamic> product,
     BuildContext context,
   ) {
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailPage(product: product),
+        ),
+      ),
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -819,7 +840,7 @@ class _HomeContentState extends State<HomeContent> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => _showAddedToCart(context, product['title']),
+                    onPressed: () => _showAddedToCart(context, product),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6B7FD7),
                       foregroundColor: Colors.white,
@@ -841,20 +862,28 @@ class _HomeContentState extends State<HomeContent> {
           ),
         ],
       ),
+    ), // GestureDetector
     );
   }
 
   // ----------------------------------------------------------
   // HELPERS
   // ----------------------------------------------------------
-  void _showAddedToCart(BuildContext context, String title) {
+  void _showAddedToCart(BuildContext context, Map<String, dynamic> product) {
+    final added = CartManager.instance.addToCart(product);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$title ditambahkan ke keranjang!'),
+        content: Text(
+          added
+              ? '${product['title']} ditambahkan ke keranjang!'
+              : '${product['title']} sudah ada di keranjang',
+        ),
         duration: const Duration(seconds: 2),
-        backgroundColor: const Color(0xFF6B7FD7),
+        backgroundColor:
+            added ? const Color(0xFF6B7FD7) : const Color(0xFF9098B1),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
