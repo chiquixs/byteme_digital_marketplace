@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/views/payment/unpaid_order.dart'; // Import halaman timer
 import 'payment_selection_page.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -54,7 +55,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserController>(context);
+    final userController = Provider.of<UserController>(context);
     int subtotal = _calculateSubtotal();
     int totalServiceFee = serviceFeePerItem * widget.selectedItems.length;
     int grandTotal = subtotal + totalServiceFee;
@@ -66,7 +67,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildProfileSection(user),
+            _buildProfileSection(userController),
             const SizedBox(height: 16),
             _buildOrderListSection(),
             const SizedBox(height: 16),
@@ -259,9 +260,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                 );
               } else {
-                // Simulasi sukses
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Processing $selectedPaymentMethod...')),
+                // 1. SIMPAN PESANAN KE CONTROLLER
+                Provider.of<UserController>(context, listen: false)
+                    .addPendingOrder(widget.selectedItems, total);
+
+                // 2. PINDAH KE HALAMAN UNPAID DENGAN TIMER
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UnpaidOrderPage(
+                      items: widget.selectedItems,
+                      totalAmount: total,
+                    ),
+                  ),
                 );
               }
             },

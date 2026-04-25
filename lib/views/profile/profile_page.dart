@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
-import 'package:byteme_digital_marketplace/views/cart/cart_page.dart';
+import 'package:byteme_digital_marketplace/views/wishlist/wishlist_page.dart'; 
+import 'package:byteme_digital_marketplace/views/payment/unpaid_order.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -34,7 +35,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to UserController for profile data
     return Consumer<UserController>(
       builder: (context, userController, child) {
         return Container(
@@ -42,10 +42,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           child: SafeArea(
             child: Column(
               children: [
-                // ── Header ──────────────────────────────────────────────────────
                 _buildHeader(userController),
 
-                // ── Scrollable body ─────────────────────────────────────────────
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -55,33 +53,45 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Recent / purchase card section
                         _buildPurchaseCard(),
 
                         const SizedBox(height: 16),
 
-                        // Menu items
-                        _buildMenuItem(
-                          icon: Icons.shopping_cart_outlined,
-                          label: 'Shopping Cart',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const CartPage()),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        // MENU FAVORITES (MENGGANTIKAN WISHLIST)
                         _buildMenuItem(
                           icon: Icons.favorite_border,
-                          label: 'Wishlist',
-                          onTap: () => _showMenuSnack('Wishlist'),
+                          label: 'Favorites',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const WishlistPage()),
+                          ),
                         ),
+                        
                         const SizedBox(height: 12),
+                        
+                        // MENU PAYMENT (SUDAH DIPERBAIKI AGAR TIDAK ERROR)
                         _buildMenuItem(
                           icon: Icons.credit_card_outlined,
                           label: 'Payment',
-                          onTap: () => _showMenuSnack('Payment'),
+                          onTap: () {
+                            if (userController.pendingOrders.isEmpty) {
+                              _showMenuSnack('No pending payments');
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UnpaidOrderPage(
+                                    items: userController.pendingOrders.last['items'] as List<Map<String, dynamic>>,
+                                    totalAmount: userController.pendingOrders.last['total'] as int,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                         ),
+                        
                         const SizedBox(height: 12),
+                        
                         _buildMenuItem(
                           icon: Icons.history_toggle_off,
                           label: 'History Orders',
@@ -95,7 +105,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
                         const SizedBox(height: 24),
 
-                        // Footer branding
                         Center(
                           child: Text(
                             'ByteMe',
@@ -129,7 +138,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // Avatar - menggunakan foto dari controller
           Container(
             width: 56,
             height: 56,
@@ -150,7 +158,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           ),
           const SizedBox(width: 14),
 
-          // Name & email - menggunakan data dari controller
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +179,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             ),
           ),
 
-          // Account icon button
           IconButton(
             icon: const Icon(
               Icons.manage_accounts_outlined,
@@ -208,7 +214,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section title
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
             child: Text(
@@ -252,7 +257,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       padding: EdgeInsets.fromLTRB(16, 12, 16, isLast ? 14 : 12),
       child: Row(
         children: [
-          // Product thumbnail placeholder
           Container(
             width: 48,
             height: 48,
@@ -267,7 +271,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
           ),
           const SizedBox(width: 12),
 
-          // Title + rating
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,7 +327,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Icon container
             Container(
               width: 38,
               height: 38,
@@ -336,7 +338,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             ),
             const SizedBox(width: 14),
 
-            // Label
             Expanded(
               child: Text(
                 label,
@@ -348,7 +349,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               ),
             ),
 
-            // Arrow
             const Icon(Icons.chevron_right_rounded, color: Colors.grey),
           ],
         ),
@@ -356,13 +356,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Helper
-  // ─────────────────────────────────────────────────────────────────────────
   void _showMenuSnack(String label) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tapped: $label'),
+        content: Text(label),
         duration: const Duration(milliseconds: 700),
         backgroundColor: _bgDark,
       ),

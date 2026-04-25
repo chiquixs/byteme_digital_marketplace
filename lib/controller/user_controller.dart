@@ -3,17 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UserController extends ChangeNotifier {
-  // Data user (Default)
   String _username = 'Burung Camar';
   String _email = 'camar12345@gmail.com';
   String _phoneNumber = '(+62) 812-5555-7777'; 
   String? _profileImagePath;
 
-  // Getters
+  List<Map<String, dynamic>> _pendingOrders = [];
+
   String get username => _username;
   String get email => _email;
-  String get phoneNumber => _phoneNumber; // <-- TAMBAHAN BARU
+  String get phoneNumber => _phoneNumber;
   String? get profileImagePath => _profileImagePath;
+  List<Map<String, dynamic>> get pendingOrders => _pendingOrders;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -27,7 +28,6 @@ class UserController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Tambahan baru untuk update No HP
   void updatePhoneNumber(String newPhone) {
     _phoneNumber = newPhone;
     notifyListeners();
@@ -51,7 +51,6 @@ class UserController extends ChangeNotifier {
     }
   }
 
-  // Update profile lengkap (Ditambah Phone)
   void updateProfile({
     String? username,
     String? email,
@@ -67,6 +66,22 @@ class UserController extends ChangeNotifier {
 
   void clearProfileImage() {
     _profileImagePath = null;
+    notifyListeners();
+  }
+
+  void addPendingOrder(List<Map<String, dynamic>> items, int total) {
+    _pendingOrders.add({
+      'id': 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+      'items': items,
+      'total': total,
+      'deadline': DateTime.now().add(const Duration(hours: 24)),
+      'status': 'Pending',
+    });
+    notifyListeners();
+  }
+
+  void clearPendingOrder(String orderId) {
+    _pendingOrders.removeWhere((order) => order['id'] == orderId);
     notifyListeners();
   }
 }
