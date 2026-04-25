@@ -1,362 +1,205 @@
 import 'package:flutter/material.dart';
+import '../../models/order_item.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
-class OrderItem {
-  final String storeName;
-  final String productName;
-  final String? reviewText;   
-  final int rating;           
-  final String imagePath;     
-
-  const OrderItem({
-    required this.storeName,
-    required this.productName,
-    this.reviewText,
-    required this.rating,
-    this.imagePath = '',
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-class HistoryOrdersPage extends StatelessWidget {
+class HistoryOrdersPage extends StatefulWidget {
   const HistoryOrdersPage({super.key});
 
-  // Dummy data
-  static const List<OrderItem> _orders = [
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Girls  E-Book',
-      rating: 0,
-      imagePath: '',
-    ),
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Materials E-Book',
-      reviewText: 'Terima kasih atas penilaianmu',
-      rating: 5,
-      imagePath: '',
-    ),
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Personal Branding E-Book',
-      reviewText: 'Terima kasih atas penilaianmu',
-      rating: 3,
-      imagePath: '',
-    ),
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Template Canva',
-      rating: 0,
-      imagePath: '',
-    ),
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Project Proposal',
-      rating: 0,
-      imagePath: '',
-    ),
-    OrderItem(
-      storeName: 'Official Store',
-      productName: 'Web Design',
-      reviewText: 'Terima kasih atas penilaianmu',
-      rating: 3,
-      imagePath: '',
-    ),
+  @override
+  State<HistoryOrdersPage> createState() => _HistoryOrdersPageState();
+}
+
+class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
+  List<OrderItem> orders = [
+    OrderItem(id: 1, storeName: 'Official Store', productName: 'Girls E-Book', rating: 0),
+    OrderItem(id: 2, storeName: 'Official Store', productName: 'Materials E-Book', reviewText: 'Very helpful!', rating: 5),
+    OrderItem(id: 3, storeName: 'Official Store', productName: 'Personal Branding E-Book', reviewText: 'Good content', rating: 3),
+    OrderItem(id: 4, storeName: 'Official Store', productName: 'Template Canva', rating: 0),
+    OrderItem(id: 5, storeName: 'Official Store', productName: 'Project Proposal', rating: 0),
+    OrderItem(id: 6, storeName: 'Official Store', productName: 'Web Design', reviewText: 'Nice design', rating: 3),
   ];
+
+  // Fungsi untuk menampilkan Dialog Rating
+  void _showRatingDialog(OrderItem order) {
+    int selectedStars = 0;
+    final TextEditingController reviewController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder( 
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Give Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('How was your experience with ${order.productName}?', style: const TextStyle(fontSize: 13)),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        onPressed: () => setDialogState(() => selectedStars = index + 1),
+                        icon: Icon(
+                          index < selectedStars ? Icons.star_rounded : Icons.star_border_rounded,
+                          color: index < selectedStars ? const Color(0xFFFFB800) : Colors.grey,
+                          size: 32,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reviewController,
+                    decoration: InputDecoration(
+                      hintText: 'Write your review here...',
+                      hintStyle: const TextStyle(fontSize: 13),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3D4270),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: selectedStars == 0 ? null : () {
+                    _updateOrderRating(order.id, selectedStars, reviewController.text);
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Submit', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Fungsi untuk update data di list utama
+  void _updateOrderRating(int id, int rating, String review) {
+    setState(() {
+      int index = orders.indexWhere((o) => o.id == id);
+      if (index != -1) {
+        orders[index] = orders[index].copyWith(rating: rating, reviewText: review);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<OrderItem> unratedOrders = _orders.where((o) => o.rating == 0).toList();
-    final List<OrderItem> ratedOrders = _orders.where((o) => o.rating > 0).toList();
+    final List<OrderItem> unratedOrders = orders.where((o) => o.rating == 0).toList();
+    final List<OrderItem> ratedOrders = orders.where((o) => o.rating > 0).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFE8E8F0),
-      appBar: _buildAppBar(context),
-      body: _orders.isEmpty
-          ? _buildEmpty()
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('My Orders', style: TextStyle(color: Color(0xFF2A2A2A), fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2A2A2A), size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: orders.isEmpty
+          ? const Center(child: Text('No orders yet'))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                
-                // --- BAGIAN 1: MENUNGGU PENILAIAN ---
                 if (unratedOrders.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12, left: 4),
-                    child: Text(
-                      'Menunggu Penilaian',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2A2A2A), // Warna teks menyesuaikan temamu
-                      ),
-                    ),
-                  ),
-                  // Tampilkan card untuk setiap item yang belum dinilai
-                  ...unratedOrders.map((order) => _OrderCard(order: order)),
+                  const Text('Waiting for Rating', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  ...unratedOrders.map((order) => _OrderCard(
+                        order: order,
+                        onTap: () => _showRatingDialog(order), 
+                      )),
                 ],
-
-                // --- BAGIAN 2: GARIS PEMISAH --
                 if (unratedOrders.isNotEmpty && ratedOrders.isNotEmpty)
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Row(
-                      children: [
-                        Expanded(child: Divider(color: Color(0xFFD0D0E0), thickness: 1)),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'Selesai Dinilai',
-                            style: TextStyle(
-                              color: Color(0xFF8B90C1),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Color(0xFFD0D0E0), thickness: 1)),
-                      ],
-                    ),
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Divider(thickness: 1),
                   ),
-
-                // --- BAGIAN 3: RIWAYAT / SUDAH DINILAI ---
                 if (ratedOrders.isNotEmpty) ...[
-                  if (unratedOrders.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12, left: 4),
-                      child: Text(
-                        'Riwayat Penilaian',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2A2A2A),
-                        ),
-                      ),
-                    ),
-                  
+                  const Text('Rated History', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
                   ...ratedOrders.map((order) => _OrderCard(order: order)),
                 ],
-                
               ],
             ),
-    );
-  }
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      leading: Container(
-          margin: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            color: Color(0xFFE8E8F0),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF2A2A2A), size: 20),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-      title: const Text(
-        'My Orders',
-        style: TextStyle(
-          color: Color(0xFF2A2A2A),
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmpty() {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 64, color: Color(0xFF8B90C1)),
-          SizedBox(height: 12),
-          Text(
-            'Belum ada pesanan',
-            style: TextStyle(
-              fontSize: 15,
-              color: Color(0xFF8B90C1),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Order card widget
-// ─────────────────────────────────────────────────────────────────────────────
 class _OrderCard extends StatelessWidget {
   final OrderItem order;
-  const _OrderCard({required this.order});
+  final VoidCallback? onTap; 
 
-  static const Color _accent = Color(0xFF3D4270);
+  const _OrderCard({required this.order, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Store label row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.storefront_outlined,
-                    size: 16, color: _accent),
-                const SizedBox(width: 6),
-                Text(
-                  order.storeName,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _accent,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: onTap, 
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 60, height: 60,
+              decoration: BoxDecoration(color: const Color(0xFFE8E8F0), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.image_outlined, color: Color(0xFF8B90C1)),
             ),
-          ),
-
-          const Divider(height: 1, thickness: 0.5, color: Color(0xFFE0E0E0)),
-
-          // Product row
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Thumbnail
-                _buildThumbnail(),
-                const SizedBox(width: 12),
-
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.productName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF2A2A2A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      _buildReviewRow(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThumbnail() {
-    if (order.imagePath.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: order.imagePath.startsWith('http')
-            ? Image.network(
-                order.imagePath,
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholderBox(),
-              )
-            : Image.asset(
-                order.imagePath,
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholderBox(),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(order.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  _buildReviewContent(),
+                ],
               ),
-      );
-    }
-    return _placeholderBox();
-  }
-
-  Widget _placeholderBox() {
-    return Container(
-      width: 72,
-      height: 72,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8E8F0),
-        borderRadius: BorderRadius.circular(6),
+            ),
+          ],
+        ),
       ),
-      child: const Icon(Icons.image_outlined,
-          color: Color(0xFF8B90C1), size: 28),
     );
   }
 
-  Widget _buildReviewRow() {
-    final bool hasRating = order.rating > 0;
-
-    if (!hasRating) {
-      // Belum dirating
+  Widget _buildReviewContent() {
+    if (order.rating == 0) {
       return Row(
-        children: [
-          ...List.generate(
-            5,
-            (_) => const Icon(Icons.star_border_rounded,
-                size: 18, color: Color(0xFFB0B0C8)),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Beri Penilaian & Rating',
-            style: TextStyle(fontSize: 12, color: Color(0xFF8B90C1)),
-          ),
+        children: const [
+          Icon(Icons.star_border_rounded, size: 18, color: Colors.grey),
+          SizedBox(width: 8),
+          Text('Give Rating & Review', style: TextStyle(fontSize: 12, color: Color(0xFF8B90C1))),
         ],
       );
     }
-
-    // Sudah dirating
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: List.generate(5, (i) {
-            return Icon(
-              i < order.rating
-                  ? Icons.star_rounded
-                  : Icons.star_border_rounded,
-              size: 18,
-              color: i < order.rating
-                  ? const Color(0xFFFFB800)
-                  : const Color(0xFFB0B0C8),
-            );
-          }),
+          children: List.generate(5, (i) => Icon(
+            i < order.rating ? Icons.star_rounded : Icons.star_border_rounded,
+            size: 18, color: i < order.rating ? const Color(0xFFFFB800) : Colors.grey,
+          )),
         ),
-        if (order.reviewText != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            order.reviewText!,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF8B90C1),
-            ),
-          ),
-        ],
+        if (order.reviewText != null)
+          Text(order.reviewText!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
