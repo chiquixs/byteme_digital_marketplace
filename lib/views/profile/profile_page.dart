@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/my_orders/history_orders_page.dart';
 import 'package:byteme_digital_marketplace/views/wishlist/wishlist_page.dart'; 
+import 'package:byteme_digital_marketplace/views/payment/unpaid_order.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -68,10 +69,25 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                         
                         const SizedBox(height: 12),
                         
+                        // MENU PAYMENT (SUDAH DIPERBAIKI AGAR TIDAK ERROR)
                         _buildMenuItem(
                           icon: Icons.credit_card_outlined,
                           label: 'Payment',
-                          onTap: () => _showMenuSnack('Payment'),
+                          onTap: () {
+                            if (userController.pendingOrders.isEmpty) {
+                              _showMenuSnack('No pending payments');
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UnpaidOrderPage(
+                                    items: userController.pendingOrders.last['items'] as List<Map<String, dynamic>>,
+                                    totalAmount: userController.pendingOrders.last['total'] as int,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                         ),
                         
                         const SizedBox(height: 12),
@@ -113,6 +129,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Header
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildHeader(UserController userController) {
     return Container(
       color: _bgDark,
@@ -176,6 +195,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Purchase / Recent card
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildPurchaseCard() {
     return Container(
       decoration: BoxDecoration(
@@ -280,6 +302,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Menu item row
+  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildMenuItem({
     required IconData icon,
     required String label,
@@ -334,7 +359,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   void _showMenuSnack(String label) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tapped: $label'),
+        content: Text(label),
         duration: const Duration(milliseconds: 700),
         backgroundColor: _bgDark,
       ),
