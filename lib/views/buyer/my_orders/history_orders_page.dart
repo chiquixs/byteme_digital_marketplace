@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/order_item.dart';
+import '../../../models/buyer/order_item.dart';
 
 class HistoryOrdersPage extends StatefulWidget {
   const HistoryOrdersPage({super.key});

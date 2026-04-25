@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../wishlist/wishlist_page.dart';
-import '../../utils/cart_manager.dart';
+import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
 // PRODUCT DETAIL PAGE - Digital Product Marketplace
