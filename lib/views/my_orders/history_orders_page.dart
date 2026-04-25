@@ -18,7 +18,54 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
     OrderItem(id: 6, storeName: 'Official Store', productName: 'Web Design', reviewText: 'Nice design', rating: 3),
   ];
 
-  // Fungsi untuk menampilkan Dialog Rating
+  // FUNGSI NOTIFIKASI
+  void _showSuccessNotification() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle, 
+                  color: Colors.green,
+                  size: 70,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Thank You!',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Your review has been submitted.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3D4270),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Close', style: TextStyle(color: Colors.white)),
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showRatingDialog(OrderItem order) {
     int selectedStars = 0;
     final TextEditingController reviewController = TextEditingController();
@@ -73,7 +120,8 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                   ),
                   onPressed: selectedStars == 0 ? null : () {
                     _updateOrderRating(order.id, selectedStars, reviewController.text);
-                    Navigator.pop(context);
+                    Navigator.pop(context); // Tutup dialog rating
+                    _showSuccessNotification(); // Munculkan notifikasi sukses di tengah
                   },
                   child: const Text('Submit', style: TextStyle(color: Colors.white)),
                 ),
@@ -85,7 +133,6 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
     );
   }
 
-  // Fungsi untuk update data di list utama
   void _updateOrderRating(int id, int rating, String review) {
     setState(() {
       int index = orders.indexWhere((o) => o.id == id);
