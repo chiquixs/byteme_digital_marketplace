@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/seller/profile/seller_profile_page.dart';
+import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.dart';
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({super.key});
@@ -22,7 +23,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
         const SellerHomeContent(),
         const Center(child: Text('Product Management')), 
         const Center(child: Text('My Orders')),
-        const Center(child: Text('Earnings')),
+        const EarningsPage(),
         const SellerProfilePage(), 
       ];
 
