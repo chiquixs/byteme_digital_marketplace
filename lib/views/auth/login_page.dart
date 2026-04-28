@@ -1,33 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'login_page.dart';
-import 'forgot_password_page.dart';
+import 'package:byteme_digital_marketplace/views/auth/register_page.dart';
+import 'package:byteme_digital_marketplace/views/auth/forgot_password_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart' as buyer;
 import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart' as seller;
 
 // ============================================================
-// REGISTER PAGE
-// Letakkan file ini di: lib/views/auth/register_page.dart
+// LOGIN PAGE
 // ============================================================
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage>
+class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-  String _selectedRole = 'Buyer'; // 'Buyer' atau 'Seller'
+  String _selectedRole = 'Buyer';
 
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
@@ -40,10 +36,8 @@ class _RegisterPageState extends State<RegisterPage>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnim =
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
@@ -56,22 +50,19 @@ class _RegisterPageState extends State<RegisterPage>
     _animController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
-  void _register() async {
+void _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
-    // TODO(backend): Panggil AuthController.register() di sini
+    // Simulasi loading backend
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // Navigasi berdasarkan role
     if (_selectedRole == 'Buyer') {
       Navigator.pushAndRemoveUntil(
         context,
@@ -81,7 +72,7 @@ class _RegisterPageState extends State<RegisterPage>
     } else {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
+        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()), 
         (route) => false,
       );
     }
@@ -103,9 +94,9 @@ class _RegisterPageState extends State<RegisterPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 52),
 
-                    // ── ILUSTRASI / LOGO AREA ──
+                    // ── LOGO ──
                     Center(
                       child: Container(
                         width: 80,
@@ -128,12 +119,12 @@ class _RegisterPageState extends State<RegisterPage>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     // ── JUDUL ──
                     const Center(
                       child: Text(
-                        'Buat Akun Baru',
+                        'Selamat Datang!',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
@@ -145,7 +136,7 @@ class _RegisterPageState extends State<RegisterPage>
                     const SizedBox(height: 6),
                     const Center(
                       child: Text(
-                        'Lengkapi data diri kamu untuk mendaftar',
+                        'Login untuk melanjutkan',
                         style: TextStyle(
                           fontSize: 13,
                           color: Color(0xFF9098B1),
@@ -153,17 +144,17 @@ class _RegisterPageState extends State<RegisterPage>
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 36),
 
                     // ── ROLE SELECTOR ──
-                    _buildSectionLabel('Register as'),
+                    _buildLabel('Login as'),
                     const SizedBox(height: 10),
                     _buildRoleSelector(),
 
                     const SizedBox(height: 20),
 
                     // ── USERNAME ──
-                    _buildSectionLabel('Username'),
+                    _buildLabel('Username'),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _usernameController,
@@ -173,9 +164,6 @@ class _RegisterPageState extends State<RegisterPage>
                         if (v == null || v.trim().isEmpty) {
                           return 'Username cannot be empty';
                         }
-                        if (v.trim().length < 3) {
-                          return 'Username must be at least 3 characters';
-                        }
                         return null;
                       },
                     ),
@@ -183,7 +171,7 @@ class _RegisterPageState extends State<RegisterPage>
                     const SizedBox(height: 16),
 
                     // ── PASSWORD ──
-                    _buildSectionLabel('Password'),
+                    _buildLabel('Password'),
                     const SizedBox(height: 8),
                     _buildTextField(
                       controller: _passwordController,
@@ -205,9 +193,6 @@ class _RegisterPageState extends State<RegisterPage>
                         if (v == null || v.isEmpty) {
                           return 'Password cannot be empty';
                         }
-                        if (v.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
                         return null;
                       },
                     ),
@@ -219,11 +204,10 @@ class _RegisterPageState extends State<RegisterPage>
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const ForgotPasswordPage(),
-                          ),
+                              builder: (_) => const ForgotPasswordPage()),
                         ),
                         child: const Padding(
-                          padding: EdgeInsets.only(top: 8),
+                          padding: EdgeInsets.only(top: 10),
                           child: Text(
                             'Forgot Password?',
                             style: TextStyle(
@@ -236,60 +220,14 @@ class _RegisterPageState extends State<RegisterPage>
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 32),
 
-                    // ── EMAIL ──
-                    _buildSectionLabel('Email'),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _emailController,
-                      hint: 'Enter your email',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Email cannot be empty';
-                        }
-                        if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
-                            .hasMatch(v.trim())) {
-                          return 'Invalid email format';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── NO HP ──
-                    _buildSectionLabel('Phone Number'),
-                    const SizedBox(height: 8),
-                    _buildTextField(
-                      controller: _phoneController,
-                      hint: 'Example: 08123456789',
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Phone number cannot be empty';
-                        }
-                        if (v.trim().length < 10) {
-                          return 'Invalid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // ── TOMBOL REGISTER ──
+                    // ── TOMBOL LOGIN ──
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B7FD7),
                           foregroundColor: Colors.white,
@@ -313,32 +251,32 @@ class _RegisterPageState extends State<RegisterPage>
                                   strokeWidth: 2.5,
                                 ),
                               )
-                            : const Text('Register'),
+                            : const Text('Login'),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // ── SUDAH PUNYA AKUN? ──
+                    // ── BELUM PUNYA AKUN? ──
                     Center(
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
-                            'Already have an account? ',
+                            'Don\'t have an account? ',
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFF9098B1),
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => Navigator.pushReplacement(
+                            onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const LoginPage()),
+                                  builder: (_) => const RegisterPage()),
                             ),
                             child: const Text(
-                              'Login',
+                              'Register',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -349,7 +287,6 @@ class _RegisterPageState extends State<RegisterPage>
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -362,7 +299,7 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   // ----------------------------------------------------------
-  // ROLE SELECTOR — Buyer / Seller toggle
+  // ROLE SELECTOR
   // ----------------------------------------------------------
   Widget _buildRoleSelector() {
     return Container(
@@ -427,9 +364,9 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   // ----------------------------------------------------------
-  // SECTION LABEL
+  // HELPERS
   // ----------------------------------------------------------
-  Widget _buildSectionLabel(String label) {
+  Widget _buildLabel(String label) {
     return Text(
       label,
       style: const TextStyle(
@@ -440,35 +377,22 @@ class _RegisterPageState extends State<RegisterPage>
     );
   }
 
-  // ----------------------------------------------------------
-  // TEXT FIELD
-  // ----------------------------------------------------------
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     bool obscure = false,
     Widget? suffixIcon,
-    TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
       validator: validator,
-      style: const TextStyle(
-        fontSize: 14,
-        color: Color(0xFF1A1D2E),
-      ),
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1A1D2E)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: Color(0xFFB0B8CC),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFFB0B8CC), fontSize: 14),
         prefixIcon: Icon(icon, color: const Color(0xFF9098B1), size: 20),
         suffixIcon: suffixIcon,
         filled: true,
@@ -485,23 +409,18 @@ class _RegisterPageState extends State<RegisterPage>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFF6B7FD7), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF6B7FD7), width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFFFF4D67), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFFFF4D67), width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFFFF4D67), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFFFF4D67), width: 1.5),
         ),
-        errorStyle: const TextStyle(
-          fontSize: 11,
-          color: Color(0xFFFF4D67),
-        ),
+        errorStyle:
+            const TextStyle(fontSize: 11, color: Color(0xFFFF4D67)),
       ),
     );
   }
