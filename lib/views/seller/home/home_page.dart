@@ -4,6 +4,8 @@ import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/seller/profile/seller_profile_page.dart';
 import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/eksplore/eksplore_page.dart'; 
+import 'package:byteme_digital_marketplace/views/seller/product/seller_product_page.dart';
+import 'package:byteme_digital_marketplace/views/seller/order/seller_order_page.dart';
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({super.key});
@@ -32,9 +34,10 @@ class _SellerHomePageState extends State<SellerHomePage> {
             );
           },
         ),
-        const Center(child: Text('Product Management (Daftar Produk Seller)')), 
-        const Center(child: Text('My Orders')),                                 
-        const EarningsPage(),                                                   
+        // Tab 1: Product Management (Update menggunakan widget baru)
+        SellerProductPage(onBackPressed: () => _switchTab(0)), 
+        SellerOrderPage(onBackPressed: () => _switchTab(0)),                               
+        EarningsPage(onBackPressed: () => _switchTab(0)),                                                   
         const SellerProfilePage(),                                              
       ];
 
