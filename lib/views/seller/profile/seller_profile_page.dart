@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
-
-// ============================================================
-// SELLER PROFILE PAGE
-// Letakkan file ini di: lib/views/seller/profile/seller_profile_page.dart
-// ============================================================
+// Pastikan kamu mengimpor file edit profile yang akan kita buat di bawah
+import 'package:byteme_digital_marketplace/views/seller/profile/edit_profile_page.dart';
 
 class SellerProfilePage extends StatelessWidget {
   const SellerProfilePage({super.key});
@@ -36,8 +33,7 @@ class SellerProfilePage extends StatelessWidget {
               ),
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   child: Column(
                     children: [
                       Row(
@@ -57,8 +53,7 @@ class SellerProfilePage extends StatelessWidget {
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
-                                Icons.notifications_none_rounded,
+                            child: const Icon(Icons.notifications_none_rounded,
                                 color: Colors.white),
                           ),
                         ],
@@ -88,48 +83,31 @@ class SellerProfilePage extends StatelessWidget {
                       subLabel: userController.displayName.isEmpty
                           ? userController.username
                           : userController.displayName,
+                      showChevron: false, // Ikon > dihilangkan
                     ),
                     _buildMenuItem(
                       icon: Icons.account_balance_wallet_outlined,
                       label: 'Bank Account',
                       subLabel: 'BCA - Bank Central Asia',
+                      showChevron: false, // Ikon > dihilangkan
                     ),
                     _buildMenuItem(
                       icon: Icons.alternate_email_rounded,
                       label: 'Email Address',
                       subLabel: userController.email,
+                      showChevron: false, // Ikon > dihilangkan
                     ),
                     _buildMenuItem(
                       icon: Icons.vpn_key_outlined,
                       label: 'Password',
                       subLabel: '••••••••••••',
                       isLast: true,
+                      showChevron: false, // Ikon > dihilangkan
                     ),
                   ]),
-
                   const SizedBox(height: 24),
-
-                  _buildSectionLabel('Store Settings'),
-                  const SizedBox(height: 12),
-                  _buildMenuCard([
-                    _buildMenuItem(
-                      icon: Icons.edit_note_rounded,
-                      label: 'Store Profile',
-                      subLabel: 'Edit store information',
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.notifications_active_outlined,
-                      label: 'Notification Settings',
-                      subLabel: 'Manage your preferences',
-                      isLast: true,
-                    ),
-                  ]),
-
                   const SizedBox(height: 24),
-
-                  // ── LOGOUT BUTTON ──
                   _buildLogoutButton(context),
-
                   const SizedBox(height: 40),
                 ],
               ),
@@ -141,160 +119,7 @@ class SellerProfilePage extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // LOGOUT BUTTON
-  // ----------------------------------------------------------
-  Widget _buildLogoutButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showLogoutDialog(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFECEE),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF4D67).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.logout_rounded,
-                  color: Color(0xFFFF4D67), size: 20),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Log Out',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF4D67),
-                    ),
-                  ),
-                  Text(
-                    'Logout from this account',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFFF8090),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Color(0xFFFF4D67)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF4D67).withOpacity(0.10),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.logout_rounded,
-                    size: 32, color: Color(0xFFFF4D67)),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Log Out?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D2E),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Are you sure you want to log out of your account?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF9098B1),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFD0D5E8)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                      ),
-                      child: const Text('Cancel',
-                          style: TextStyle(
-                              color: Color(0xFF9098B1),
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        // TODO(backend): Panggil AuthController.logout()
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginPage()),
-                          (route) => false,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF4D67),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                      ),
-                      child: const Text('Log Out',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------
-  // MAIN USER CARD
+  // MAIN USER CARD (DENGAN TOMBOL EDIT)
   // ----------------------------------------------------------
   Widget _buildMainUserCard(BuildContext context, UserController user) {
     return Container(
@@ -320,8 +145,7 @@ class SellerProfilePage extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 35,
-                      backgroundColor:
-                          const Color(0xFF6B7FD7).withOpacity(0.1),
+                      backgroundColor: const Color(0xFF6B7FD7).withOpacity(0.1),
                       backgroundImage: user.profileImagePath != null
                           ? FileImage(File(user.profileImagePath!))
                           : null,
@@ -371,6 +195,17 @@ class SellerProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
+              // TOMBOL EDIT DI SAMPING NAMA
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                  );
+                },
+                icon: const Icon(Icons.edit_note_rounded, 
+                    color: Color(0xFF3D4270), size: 28),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -391,12 +226,10 @@ class SellerProfilePage extends StatelessWidget {
   Widget _buildSimpleStat(String label, String value) {
     return Column(
       children: [
-        Text(label,
-            style: const TextStyle(color: Colors.grey, fontSize: 11)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
       ],
     );
   }
@@ -436,6 +269,8 @@ class SellerProfilePage extends StatelessWidget {
     required String label,
     required String subLabel,
     bool isLast = false,
+    bool showChevron = true, // Tambahkan parameter ini
+    VoidCallback? onTap,
   }) {
     return Column(
       children: [
@@ -457,9 +292,10 @@ class SellerProfilePage extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87)),
-          trailing: const Icon(Icons.chevron_right_rounded,
-              color: Colors.grey),
-          onTap: () {},
+          trailing: showChevron 
+              ? const Icon(Icons.chevron_right_rounded, color: Colors.grey)
+              : null, // Jika false, trailing dikosongkan
+          onTap: onTap,
         ),
         if (!isLast)
           Padding(
@@ -467,6 +303,75 @@ class SellerProfilePage extends StatelessWidget {
             child: Divider(height: 1, color: Colors.grey.shade100),
           ),
       ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // LOGOUT BUTTON & DIALOG (SAMA SEPERTI SEBELUMNYA)
+  // ----------------------------------------------------------
+  Widget _buildLogoutButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showLogoutDialog(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFECEE),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF4D67).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.logout_rounded,
+                  color: Color(0xFFFF4D67), size: 20),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Log Out',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF4D67))),
+                  Text('Logout from this account',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFFF8090))),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFFF4D67)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Log Out?"),
+        content: const Text("Are you sure you want to log out?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+            child: const Text("Log Out", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
