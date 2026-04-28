@@ -269,7 +269,7 @@ class _HomeContentState extends State<HomeContent> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
                   child: _buildSectionHeader(
-                    '🔥 Paling Banyak Dibeli',
+                    'Most Frequently Purchased 🔥',
                     onMore: widget.onNavigateToExplore,
                   ),
                 ),
@@ -295,7 +295,7 @@ class _HomeContentState extends State<HomeContent> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
                   child: _buildSectionHeader(
-                    '🔍 Paling Banyak Dicari',
+                    ' Most Searched 🔍',
                     onMore: widget.onNavigateToExplore,
                   ),
                 ),
