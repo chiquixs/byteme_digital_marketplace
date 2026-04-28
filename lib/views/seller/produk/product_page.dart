@@ -20,7 +20,7 @@ import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart';
 // SELLER PRODUCT PAGE
 // ============================================================
 class SellerProductPage extends StatefulWidget {
-  const SellerProductPage({super.key});
+  const SellerProductPage({super.key, required void Function() onBackPressed});
 
   @override
   State<SellerProductPage> createState() => _SellerProductPageState();
