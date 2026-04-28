@@ -153,8 +153,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 SnackBar(
                                   content: Text(
                                     _isWishlisted
-                                        ? '$title ditambahkan ke wishlist!'
-                                        : '$title dihapus dari wishlist',
+                                        ? '$title added to wishlist!'
+                                        : '$title removed from wishlist',
                                   ),
                                   duration: const Duration(seconds: 2),
                                   backgroundColor: _isWishlisted
@@ -301,25 +301,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
               child: ElevatedButton(
                 onPressed: () {
-                  final added =
-                      CartManager.instance.addToCart(widget.product);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        added
-                            ? '$title ditambahkan ke keranjang!'
-                            : '$title sudah ada di keranjang',
-                      ),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: added
-                          ? const Color(0xFF6B7FD7)
-                          : const Color(0xFF9098B1),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
+                    _showAddedToCartNotification(context, widget.product);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6B7FD7),
@@ -343,6 +325,91 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
+void _showAddedToCartNotification(BuildContext context, Map<String, dynamic> product) {
+  final added = CartManager.instance.addToCart(product);
+
+  late OverlayEntry overlayEntry;
+  overlayEntry = OverlayEntry(
+    builder: (context) => Center(
+      child: Material(
+        color: Colors.transparent,
+        child: TweenAnimationBuilder(
+          duration: const Duration(milliseconds: 300),
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          builder: (context, double value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.scale(
+                scale: 0.9 + (0.1 * value),
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            margin: const EdgeInsets.symmetric(horizontal: 50),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1D2E).withOpacity(0.9), // Hitam elegan
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ikon Bulat
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: added ? const Color(0xFF6B7FD7) : Colors.orangeAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    added ? Icons.shopping_cart_outlined : Icons.info_outline_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Teks Status
+                Text(
+                  added ? "Added to Cart!" : "Already in Cart",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                
+                // Nama Produk
+                Text(
+                  product['title'],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Overlay.of(context).insert(overlayEntry);
+  Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
+}
   // ----------------------------------------------------------
   // IMAGE CAROUSEL
   // ----------------------------------------------------------

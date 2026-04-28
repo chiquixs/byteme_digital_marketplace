@@ -193,7 +193,7 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            'Belum ada produk favorit',
+            'No items in your wishlist',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -202,7 +202,7 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Tap ikon ❤️ di halaman produk\nuntuk menyimpan produk favoritmu',
+            'Tap the ❤️ icon on the product page\nto save your favorite items',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,

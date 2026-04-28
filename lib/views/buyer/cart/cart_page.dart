@@ -508,7 +508,7 @@ class _CartPageState extends State<CartPage> {
                   children: [
                     if (selectedCount > 0)
                       Text(
-                        '$selectedCount item dipilih',
+                        '$selectedCount item selected',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF9098B1),
@@ -546,7 +546,7 @@ class _CartPageState extends State<CartPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                            'Pilih minimal satu produk untuk checkout!'),
+                            'Choose at least one product to checkout!'),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: Colors.redAccent,
                       ),

@@ -355,9 +355,9 @@ class _ExplorePageState extends State<ExplorePage> {
           const SizedBox(height: 50),
           Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text('Produk tidak ditemukan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF9098B1))),
+          const Text('Product not found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF9098B1))),
           const SizedBox(height: 8),
-          const Text('Coba ubah filter atau kata kunci', style: TextStyle(fontSize: 13, color: Color(0xFFB0B8CC))),
+          const Text('Try changing the filter or search term', style: TextStyle(fontSize: 13, color: Color(0xFFB0B8CC))),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () { _searchController.clear(); _resetAppliedFilters(); },
@@ -383,7 +383,7 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
+Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
       child: Container(
@@ -394,6 +394,7 @@ class _ExplorePageState extends State<ExplorePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ... (Bagian Gambar & Kategori tetap sama) ...
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
@@ -424,17 +425,22 @@ class _ExplorePageState extends State<ExplorePage> {
                   const SizedBox(height: 4),
                   Text(product['priceLabel'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A1D2E))),
                   const SizedBox(height: 8),
+                  
+                  // --- BAGIAN YANG DIGANTI ---
                   if (!widget.isSellerView)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          final added = CartManager.instance.addToCart(product);
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(added ? '${product['title']} ditambahkan!' : 'Sudah ada di keranjang'), backgroundColor: added ? const Color(0xFF6B7FD7) : const Color(0xFF9098B1), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+                          // Panggil fungsi notifikasi kustom kita
+                          _showCustomNotification(context, product);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B7FD7), foregroundColor: Colors.white, elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          backgroundColor: const Color(0xFF6B7FD7), 
+                          foregroundColor: Colors.white, 
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 8), 
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                         child: const Text('Add to Cart'),
@@ -449,6 +455,76 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  void _showCustomNotification(BuildContext context, Map<String, dynamic> product) {
+    final added = CartManager.instance.addToCart(product);
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            builder: (context, double value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.scale(
+                  scale: 0.9 + (0.1 * value),
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              margin: const EdgeInsets.symmetric(horizontal: 50),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1D2E).withOpacity(0.9), // Warna gelap elegan
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: added ? const Color(0xFF6B7FD7) : Colors.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      added ? Icons.shopping_cart_outlined : Icons.info_outline_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    added ? "Added to Cart!" : "Already in Cart",
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product['title'],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
+  }
+  
   Widget _buildStarRating(double rating) {
     return Row(children: List.generate(5, (i) {
       if (i < rating.floor()) return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
