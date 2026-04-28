@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/views/auth/register_page.dart';
+import '../controller/seller/product_controller.dart';
 import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 
 void main() {
@@ -12,8 +14,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => UserController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserController()),
+        ChangeNotifierProvider(create: (_) => ProductController()),
+      ],
       child: MaterialApp(
         title: 'ByteMe Digital Marketplace',
         debugShowCheckedModeBanner: false,
