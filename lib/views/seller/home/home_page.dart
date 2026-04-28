@@ -149,6 +149,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                   child: Icon(Icons.person_rounded, size: 28),
       ),
     );
+    
   }
 }
 
