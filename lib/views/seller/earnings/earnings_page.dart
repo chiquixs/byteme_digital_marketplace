@@ -1,10 +1,71 @@
 import 'package:flutter/material.dart';
 
-class EarningsPage extends StatelessWidget {
-  // REVISI: Tambahkan callback agar bisa dikontrol dari HomePage
+class EarningsPage extends StatefulWidget {
   final VoidCallback? onBackPressed;
 
   const EarningsPage({super.key, this.onBackPressed});
+
+  @override
+  State<EarningsPage> createState() => _EarningsPageState();
+}
+
+class _EarningsPageState extends State<EarningsPage> {
+  // Controller untuk menangkap inputan user
+  final TextEditingController _amountController = TextEditingController();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  // Fungsi untuk memunculkan pop-up sukses
+  void _showProcessingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User gak bisa asal klik luar buat tutup
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cached_rounded, color: Color(0xFF6B7FD7), size: 60),
+                const SizedBox(height: 20),
+                const Text(
+                  'Withdraw Processed',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3D4270)),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Your withdrawal is being processed. Please wait 1–2 business days!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); 
+                      _amountController.clear(); 
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6B7FD7),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Got it', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +96,10 @@ class EarningsPage extends StatelessWidget {
                   const SizedBox(width: 40), 
                 ],
               ),
-              
               const SizedBox(height: 25),
 
               // --- BALANCE CARD ---
               _buildBalanceCard(accentColor),
-
               const SizedBox(height: 25),
 
               // --- INPUT AMOUNT ---
@@ -49,17 +108,14 @@ class EarningsPage extends StatelessWidget {
               _buildAmountInput(),
               const SizedBox(height: 8),
               const Text('Minimum withdraw amount 10.000', style: TextStyle(color: Colors.grey, fontSize: 11)),
-
               const SizedBox(height: 20),
 
               // --- AUTOMATIC NOTICE ---
               _buildNoticeBox(accentColor),
-
               const SizedBox(height: 25),
 
               // --- SUMMARY CARD ---
               _buildSummaryCard(primaryColor),
-
               const SizedBox(height: 30),
 
               // --- CONFIRM BUTTON ---
@@ -67,7 +123,15 @@ class EarningsPage extends StatelessWidget {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (_amountController.text.isNotEmpty) {
+                      _showProcessingDialog();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter the amount first!'))
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -76,7 +140,6 @@ class EarningsPage extends StatelessWidget {
                   child: const Text('Confirm Withdraw', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
-
               const SizedBox(height: 30),
 
               // --- RECENT HISTORY ---
@@ -102,8 +165,7 @@ class EarningsPage extends StatelessWidget {
       ),
       child: IconButton(
         icon: const Icon(Icons.arrow_back, color: Color(0xFF3D4270), size: 20),
-        // REVISI: Jika onBackPressed ada, pakai itu. Jika tidak, baru Navigator.pop
-        onPressed: onBackPressed ?? () => Navigator.pop(context),
+        onPressed: widget.onBackPressed ?? () => Navigator.pop(context),
       ),
     );
   }
@@ -134,18 +196,25 @@ class EarningsPage extends StatelessWidget {
 
   Widget _buildAmountInput() {
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('RP. 100.000', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFB0B8CC))),
-          Icon(Icons.chevron_right, color: Color(0xFFB0B8CC)),
-        ],
+      child: TextField(
+        controller: _amountController,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3D4270)),
+        decoration: InputDecoration(
+          prefixIcon: const Padding(
+            padding: EdgeInsets.all(15),
+            child: Text('RP.', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFB0B8CC))),
+          ),
+          hintText: '0',
+          hintStyle: const TextStyle(color: Color(0xFFD0D5E8)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        ),
       ),
     );
   }
