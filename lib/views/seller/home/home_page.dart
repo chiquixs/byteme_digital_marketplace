@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../produk/product_page.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/seller/profile/seller_profile_page.dart';
 import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/eksplore/eksplore_page.dart'; 
-import 'package:byteme_digital_marketplace/views/seller/product/seller_product_page.dart';
 import 'package:byteme_digital_marketplace/views/seller/order/seller_order_page.dart';
 
 class SellerHomePage extends StatefulWidget {
@@ -94,6 +94,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
         ),
       ),
     );
+    
   }
 }
 
