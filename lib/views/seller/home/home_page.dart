@@ -5,7 +5,6 @@ import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/seller/profile/seller_profile_page.dart';
 import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/eksplore/eksplore_page.dart'; 
-import 'package:byteme_digital_marketplace/views/seller/product/seller_product_page.dart';
 import 'package:byteme_digital_marketplace/views/seller/order/seller_order_page.dart';
 
 class SellerHomePage extends StatefulWidget {
@@ -93,60 +92,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
             Text(label, style: TextStyle(fontSize: 10, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? const Color(0xFF6B7FD7) : const Color(0xFFB0B8CC))),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: primaryBlue,
-            unselectedItemColor: Colors.grey.shade400,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            currentIndex: 0,
-              onTap: (index) {
-                if (index == 1) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SellerProductPage()),
-                  );
-                }
-              },
-              items: const [
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.home_rounded, size: 28),
-                ),
-                label: 'Dashboard',
-              ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.grid_view_rounded, size: 26),
-                ),
-                label: 'Product',
-              ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.shopping_bag_outlined, size: 26),
-                ),
-                label: 'My Order',
-              ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.ios_share_rounded, size: 26),
-                ),
-                label: 'Earnings',
-              ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4),
-                  child: Icon(Icons.person_rounded, size: 28),
       ),
     );
   }
