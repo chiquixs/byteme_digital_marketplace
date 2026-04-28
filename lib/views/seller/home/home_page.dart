@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../produk/product_page.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 
 class SellerHomePage extends StatelessWidget {
@@ -171,8 +172,16 @@ class SellerHomePage extends StatelessWidget {
             unselectedItemColor: Colors.grey.shade400,
             selectedFontSize: 12,
             unselectedFontSize: 12,
-            currentIndex: 0, // Default di Dashboard
-            items: const [
+            currentIndex: 0,
+              onTap: (index) {
+                if (index == 1) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SellerProductPage()),
+                  );
+                }
+              },
+              items: const [
               BottomNavigationBarItem(
                 icon: Padding(
                   padding: EdgeInsets.only(bottom: 4),
