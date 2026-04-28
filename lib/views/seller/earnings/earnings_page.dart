@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 class EarningsPage extends StatelessWidget {
-  const EarningsPage({super.key});
+  // REVISI: Tambahkan callback agar bisa dikontrol dari HomePage
+  final VoidCallback? onBackPressed;
+
+  const EarningsPage({super.key, this.onBackPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -24,18 +27,18 @@ class EarningsPage extends StatelessWidget {
                   const Expanded(
                     child: Center(
                       child: Text(
-                        'Withdraw', // Nama tetap Withdraw sesuai request
+                        'Withdraw',
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 40), // Balancer
+                  const SizedBox(width: 40), 
                 ],
               ),
               
               const SizedBox(height: 25),
 
-              // --- BALANCE CARD (Available & Total Earnings) ---
+              // --- BALANCE CARD ---
               _buildBalanceCard(accentColor),
 
               const SizedBox(height: 25),
@@ -54,7 +57,7 @@ class EarningsPage extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              // --- SUMMARY CARD (You Will Receive) ---
+              // --- SUMMARY CARD ---
               _buildSummaryCard(primaryColor),
 
               const SizedBox(height: 30),
@@ -76,10 +79,10 @@ class EarningsPage extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // --- OPTIONAL: SIMPLE HISTORY ---
+              // --- RECENT HISTORY ---
               const Text('Recent History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: primaryColor)),
               const SizedBox(height: 12),
-              _buildSimpleHistory(), // Mockup history
+              _buildSimpleHistory(), 
               const SizedBox(height: 30),
             ],
           ),
@@ -99,7 +102,8 @@ class EarningsPage extends StatelessWidget {
       ),
       child: IconButton(
         icon: const Icon(Icons.arrow_back, color: Color(0xFF3D4270), size: 20),
-        onPressed: () => Navigator.pop(context),
+        // REVISI: Jika onBackPressed ada, pakai itu. Jika tidak, baru Navigator.pop
+        onPressed: onBackPressed ?? () => Navigator.pop(context),
       ),
     );
   }
@@ -136,9 +140,9 @@ class EarningsPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
+        children: [
           Text('RP. 100.000', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFB0B8CC))),
           Icon(Icons.chevron_right, color: Color(0xFFB0B8CC)),
         ],
@@ -193,11 +197,11 @@ class EarningsPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        leading: const CircleAvatar(backgroundColor: Color(0xFFF0F2F8), child: Icon(Icons.outbound, color: Colors.redAccent, size: 20)),
-        title: const Text('Withdrawal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        subtitle: const Text('24 Apr 2026', style: TextStyle(fontSize: 11)),
-        trailing: const Text('-Rp 100.000', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+      child: const ListTile(
+        leading: CircleAvatar(backgroundColor: Color(0xFFF0F2F8), child: Icon(Icons.outbound, color: Colors.redAccent, size: 20)),
+        title: Text('Withdrawal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        subtitle: Text('24 Apr 2026', style: TextStyle(fontSize: 11)),
+        trailing: Text('-Rp 100.000', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
       ),
     );
   }
