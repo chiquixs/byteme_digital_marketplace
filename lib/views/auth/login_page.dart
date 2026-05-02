@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:byteme_digital_marketplace/views/auth/register_page.dart';
 import 'package:byteme_digital_marketplace/views/auth/forgot_password_page.dart';
-import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart' as buyer;
-import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart' as seller;
+import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart'
+    as buyer;
+import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart'
+    as seller;
 import 'package:byteme_digital_marketplace/controller/auth_controller.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+
 
 // ============================================================
 // LOGIN PAGE
@@ -37,8 +42,7 @@ class _LoginPageState extends State<LoginPage>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
@@ -54,46 +58,49 @@ class _LoginPageState extends State<LoginPage>
     super.dispose();
   }
 
-void _login() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _isLoading = true);
+  void _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
-  final result = await AuthController.login(
-    username: _usernameController.text.trim(),
-    password: _passwordController.text,
-    role: _selectedRole,
-  );
+    final result = await AuthController.login(
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+      role: _selectedRole,
+    );
 
-  if (!mounted) return;
-  setState(() => _isLoading = false);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-  if (result.success) {
-    if (_selectedRole == 'Buyer') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const buyer.HomePage()),
-        (route) => false,
-      );
+    if (result.success && result.user != null) {
+      // ✅ SIMPAN data user ke UserController
+      await context.read<UserController>().setUserFromModel(result.user!);
+
+      if (_selectedRole == 'Buyer') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const buyer.HomePage()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
+          (route) => false,
+        );
+      }
     } else {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
-        (route) => false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: const Color(0xFFFF4D67),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
       );
     }
-  } else {
-    // Tampilkan error snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor: const Color(0xFFFF4D67),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
-}
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,7 +203,8 @@ void _login() async {
                       obscure: _obscurePassword,
                       suffixIcon: GestureDetector(
                         onTap: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                         child: Icon(
                           _obscurePassword
                               ? Icons.visibility_off_outlined
@@ -220,7 +228,8 @@ void _login() async {
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const ForgotPasswordPage()),
+                            builder: (_) => const ForgotPasswordPage(),
+                          ),
                         ),
                         child: const Padding(
                           padding: EdgeInsets.only(top: 10),
@@ -247,8 +256,9 @@ void _login() async {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B7FD7),
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              const Color(0xFF6B7FD7).withOpacity(0.6),
+                          disabledBackgroundColor: const Color(
+                            0xFF6B7FD7,
+                          ).withOpacity(0.6),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -289,7 +299,8 @@ void _login() async {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const RegisterPage()),
+                                builder: (_) => const RegisterPage(),
+                              ),
                             ),
                             child: const Text(
                               'Register',
@@ -413,8 +424,10 @@ void _login() async {
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -435,8 +448,7 @@ void _login() async {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFFF4D67), width: 1.5),
         ),
-        errorStyle:
-            const TextStyle(fontSize: 11, color: Color(0xFFFF4D67)),
+        errorStyle: const TextStyle(fontSize: 11, color: Color(0xFFFF4D67)),
       ),
     );
   }

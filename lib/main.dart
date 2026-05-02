@@ -6,7 +6,15 @@ import '../controller/seller/product_controller.dart';
 import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserController()),
+        // provider lainnya...
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

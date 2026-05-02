@@ -6,7 +6,7 @@ class ApiService {
   // Ganti dengan IP lokal kamu saat development
   // Jika pakai emulator Android: http://10.0.2.2:8000/api
   // Jika pakai device fisik: http://IP_LAPTOP_KAMU:8000/api
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+ static const String baseUrl = 'http://192.168.50.230:8000/api';
 
   // ── Simpan token ke local storage
   static Future<void> saveToken(String token) async {
