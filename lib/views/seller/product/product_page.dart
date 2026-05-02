@@ -1,6 +1,6 @@
 // ============================================================
 // SELLER PRODUCT PAGE
-// Letakkan file ini di: lib/views/seller/product_page.dart
+// Letakkan file ini di: lib/views/seller/product/product_page.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -9,12 +9,14 @@ import 'package:provider/provider.dart';
 // ── Import ProductController ──
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart';
 
-// ── Import halaman seller lain untuk navigasi bottom bar ──
+// ── Import halaman seller lain untuk navigasi ──
 import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart';
-// TODO: Uncomment import di bawah ini setelah halaman-halaman tersebut dibuat:
-// import 'package:byteme_digital_marketplace/views/seller/order/order_page.dart';
-// import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.dart';
-// import 'package:byteme_digital_marketplace/views/seller/profile/profile_page.dart';
+
+// ── Import AddProductPage untuk tombol FAB ──
+import 'package:byteme_digital_marketplace/views/seller/product/add_product.dart';
+
+// ── Import EditProductPage untuk navigasi dari titik tiga ──
+import 'package:byteme_digital_marketplace/views/seller/product/edit_product.dart';
 
 // ============================================================
 // SELLER PRODUCT PAGE
@@ -32,12 +34,6 @@ class _SellerProductPageState extends State<SellerProductPage> {
   static const Color _primaryBlue = Color(0xFF6B7FD7);
   static const Color _bgColor = Color(0xFFE8E8F0);
 
-  // ── INDEX TAB BOTTOM NAV (Product = index 1) ──
-  int _currentIndex = 1;
-
-  // ── FILTER TAB: 0=All, 1=Active, 2=Inactive ──
-  int _selectedFilter = 0;
-
   // ── SEARCH ──
   // Meniru pola _searchController di explore_page.dart
   final TextEditingController _searchController = TextEditingController();
@@ -54,8 +50,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
     super.initState();
     _searchController.addListener(_applyFilter);
 
-    // Jalankan filter pertama kali setelah frame pertama selesai render,
-    // agar context.read sudah tersedia
+    // Jalankan filter pertama kali setelah frame pertama selesai render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyFilter();
     });
@@ -63,73 +58,30 @@ class _SellerProductPageState extends State<SellerProductPage> {
 
   @override
   void dispose() {
-    _searchController.removeListener(_applyFilter); // lepas listener dulu
+    _searchController.removeListener(_applyFilter);
     _searchController.dispose();
     super.dispose();
   }
 
   // ──────────────────────────────────────────
-  // FILTER LOGIC
-  // Meniru pola void _applyFilter() di explore_page.dart
-  // Bedanya: sumber data diambil dari ProductController, bukan list lokal
+  // FILTER LOGIC — hanya berdasarkan search query (filter tab dihapus)
+  // Meniru pola _applyFilter di explore_page.dart
   // ──────────────────────────────────────────
   void _applyFilter() {
-    // Ambil data terbaru dari controller (selalu up-to-date)
     final allProducts = context.read<ProductController>().products;
     final query = _searchController.text.toLowerCase();
 
     setState(() {
       _filteredProducts = allProducts.where((p) {
-        // Filter berdasarkan teks search
-        final matchQuery =
-            (p['title'] as String).toLowerCase().contains(query);
-
-        // Filter berdasarkan tab (All / Active / Inactive)
-        final matchStatus = _selectedFilter == 0 ||
-            (_selectedFilter == 1 && p['status'] == 'active') ||
-            (_selectedFilter == 2 && p['status'] == 'inactive');
-
-        return matchQuery && matchStatus;
+        return (p['title'] as String).toLowerCase().contains(query);
       }).toList();
     });
-  }
-
-  // ──────────────────────────────────────────
-  // NAVIGASI BOTTOM NAV
-  // Meniru pola _switchTab di buyer/home/home_page.dart
-  // ──────────────────────────────────────────
-  void _onNavTap(int index) {
-    if (index == _currentIndex) return;
-    setState(() => _currentIndex = index);
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SellerHomePage()),
-        );
-        break;
-      case 1:
-        break;
-      case 2:
-        // TODO: Navigator.pushReplacement ke SellerOrderPage
-        _showComingSoonSnackbar('Order');
-        break;
-      case 3:
-        // TODO: Navigator.pushReplacement ke SellerEarningsPage
-        _showComingSoonSnackbar('Earnings');
-        break;
-      case 4:
-        // TODO: Navigator.pushReplacement ke SellerProfilePage
-        _showComingSoonSnackbar('Profile');
-        break;
-    }
   }
 
   void _showComingSoonSnackbar(String page) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Halaman $page belum dibuat'),
+        content: Text('The $page page has not been created yet'),
         backgroundColor: _primaryBlue,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -142,12 +94,8 @@ class _SellerProductPageState extends State<SellerProductPage> {
   // ──────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // Consumer meniru pola Consumer<UserController> di buyer/home/home_page.dart
-    // Widget otomatis rebuild saat ProductController memanggil notifyListeners()
     return Consumer<ProductController>(
       builder: (context, productController, child) {
-        // Setiap kali controller berubah (toggle/delete), filter dijalankan ulang
-        // agar _filteredProducts selalu sinkron dengan data terbaru
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _applyFilter();
         });
@@ -159,13 +107,12 @@ class _SellerProductPageState extends State<SellerProductPage> {
               children: [
                 _buildHeader(),
                 _buildSearchBar(),
-                _buildFilterTabs(),
+                // ── Filter tab Active/Inactive DIHAPUS ──
                 Expanded(
                   child: _filteredProducts.isEmpty
                       ? _buildEmptyState()
                       : ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                           itemCount: _filteredProducts.length,
                           itemBuilder: (context, index) {
                             return _buildProductCard(
@@ -181,18 +128,23 @@ class _SellerProductPageState extends State<SellerProductPage> {
 
           // ── TOMBOL TAMBAH PRODUK ──
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showComingSoonSnackbar('Add Product'),
+            onPressed: () {
+              // Meniru pola Navigator.push di seller/home/home_page.dart
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddProductPage()),
+              );
+            },
             backgroundColor: _primaryBlue,
             foregroundColor: Colors.white,
             elevation: 4,
             icon: const Icon(Icons.add_rounded),
             label: const Text(
-              '+ Add New Product',
+              'Add New Product',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         );
       },
     );
@@ -200,13 +152,13 @@ class _SellerProductPageState extends State<SellerProductPage> {
 
   // ----------------------------------------------------------
   // HEADER
+  // Meniru pola _buildHeader di versi sebelumnya
   // ----------------------------------------------------------
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       child: Row(
         children: [
-          // Tombol back → pushReplacement ke SellerHomePage
           GestureDetector(
             onTap: () => Navigator.pushReplacement(
               context,
@@ -235,16 +187,15 @@ class _SellerProductPageState extends State<SellerProductPage> {
             ),
           ),
           const Spacer(),
-          // Badge jumlah produk — meniru pola badge di explore_page.dart
+          // Badge jumlah produk
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: _primaryBlue.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${_filteredProducts.length} Produk',
+              '${_filteredProducts.length} Product',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -285,8 +236,6 @@ class _SellerProductPageState extends State<SellerProductPage> {
             Expanded(
               child: TextField(
                 controller: _searchController,
-                // Tidak pakai onChanged — sudah pakai addListener di initState
-                // Meniru pola: _searchController.addListener(_applyFilter) di explore_page.dart
                 decoration: const InputDecoration(
                   hintText: 'Search product',
                   hintStyle: TextStyle(
@@ -300,14 +249,13 @@ class _SellerProductPageState extends State<SellerProductPage> {
                 ),
               ),
             ),
-            // Tombol X — clear() otomatis trigger listener → _applyFilter()
             if (_searchController.text.isNotEmpty)
               GestureDetector(
                 onTap: () => _searchController.clear(),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.close_rounded,
-                      color: Color(0xFF9098B1), size: 20),
+                  child:
+                      Icon(Icons.close_rounded, color: Color(0xFF9098B1), size: 20),
                 ),
               )
             else
@@ -319,65 +267,13 @@ class _SellerProductPageState extends State<SellerProductPage> {
   }
 
   // ----------------------------------------------------------
-  // FILTER TABS (All / Active / Inactive)
-  // ----------------------------------------------------------
-  Widget _buildFilterTabs() {
-    final List<String> tabs = ['All Products', 'Active', 'Inactive'];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Row(
-        children: List.generate(tabs.length, (index) {
-          final bool isSelected = _selectedFilter == index;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedFilter = index);
-              _applyFilter();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 10),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? _primaryBlue : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: _primaryBlue.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        )
-                      ]
-                    : [],
-              ),
-              child: Text(
-                tabs[index],
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : Colors.grey.shade500,
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------
   // PRODUCT CARD
-  // Meniru pola _buildProductItem di seller/home/home_page.dart
-  // dan Image.asset + errorBuilder di buyer/home/home_page.dart
+  // Badge status & toggle dihapus, titik tiga hanya Edit & Delete
   // ----------------------------------------------------------
   Widget _buildProductCard(
     Map<String, dynamic> product,
     ProductController controller,
   ) {
-    final bool isActive = product['status'] == 'active';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
@@ -446,14 +342,10 @@ class _SellerProductPageState extends State<SellerProductPage> {
                 const SizedBox(height: 4),
                 Text(
                   product['sales'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
                 const SizedBox(height: 6),
                 // Rating bintang
-                // Meniru pola _buildStarRating di buyer/home/home_page.dart
                 Row(
                   children: [
                     _buildStarRating(product['rating']),
@@ -461,9 +353,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
                     Text(
                       '${product['rating']}',
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF9098B1),
-                      ),
+                          fontSize: 11, color: Color(0xFF9098B1)),
                     ),
                   ],
                 ),
@@ -471,41 +361,17 @@ class _SellerProductPageState extends State<SellerProductPage> {
             ),
           ),
 
-          // ── KANAN: Titik tiga + Badge Status ──
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              GestureDetector(
-                onTap: () =>
-                    _showProductOptions(context, product, controller),
-                child: Icon(
-                  Icons.more_horiz_rounded,
-                  color: Colors.grey.shade400,
-                  size: 22,
-                ),
+          // ── KANAN: hanya tombol titik tiga (badge status & toggle dihapus) ──
+          GestureDetector(
+            onTap: () => _showProductOptions(context, product, controller),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.more_horiz_rounded,
+                color: Colors.grey.shade400,
+                size: 22,
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xFF4CAF50).withOpacity(0.12)
-                      : Colors.grey.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isActive
-                        ? const Color(0xFF4CAF50)
-                        : Colors.grey.shade500,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -521,11 +387,10 @@ class _SellerProductPageState extends State<SellerProductPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_rounded,
-              size: 64, color: Colors.grey.shade300),
+          Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           const Text(
-            'Produk tidak ditemukan',
+            'Product not found',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -534,23 +399,15 @@ class _SellerProductPageState extends State<SellerProductPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Coba ubah filter atau kata kunci',
+            'Try changing your search terms',
             style: TextStyle(fontSize: 13, color: Color(0xFFB0B8CC)),
           ),
           const SizedBox(height: 16),
-          // Meniru pola TextButton reset di explore_page.dart
           TextButton(
-            onPressed: () {
-              _searchController.clear();
-              setState(() => _selectedFilter = 0);
-              _applyFilter();
-            },
+            onPressed: () => _searchController.clear(),
             child: const Text(
-              'Reset semua filter',
-              style: TextStyle(
-                color: _primaryBlue,
-                fontWeight: FontWeight.w600,
-              ),
+              'Reset pencarian',
+              style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -568,27 +425,23 @@ class _SellerProductPageState extends State<SellerProductPage> {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 13);
         } else if (i < rating) {
-          return const Icon(Icons.star_half,
-              color: Color(0xFFFFB800), size: 13);
+          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 13);
         } else {
-          return const Icon(Icons.star_border,
-              color: Color(0xFFD0D5E8), size: 13);
+          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 13);
         }
       }),
     );
   }
 
   // ----------------------------------------------------------
-  // POPUP TITIK TIGA
-  // Meniru pola showModalBottomSheet di explore_page.dart
+  // POPUP TITIK TIGA — hanya Edit & Delete (toggle status dihapus)
+  // Meniru pola showModalBottomSheet di versi sebelumnya
   // ----------------------------------------------------------
   void _showProductOptions(
     BuildContext context,
     Map<String, dynamic> product,
     ProductController controller,
   ) {
-    final bool isActive = product['status'] == 'active';
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -602,7 +455,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar — meniru handle bar di _FilterSheet explore_page.dart
+            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -620,61 +473,27 @@ class _SellerProductPageState extends State<SellerProductPage> {
                 color: _accentColor,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              isActive ? '● Active' : '● Inactive',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isActive
-                    ? const Color(0xFF4CAF50)
-                    : Colors.grey.shade400,
-              ),
-            ),
             const SizedBox(height: 20),
 
-            // ── Edit ──
+            // ── Edit Product → navigasi ke EditProductPage ──
             _buildOptionButton(
               icon: Icons.edit_rounded,
               label: 'Edit Product',
               color: _primaryBlue,
               onTap: () {
-                Navigator.pop(context);
-                _showComingSoonSnackbar('Edit Product');
-              },
-            ),
-            const SizedBox(height: 10),
-
-            // ── Toggle Status ──
-            // Memanggil controller.toggleStatus() → notifyListeners()
-            // → Consumer rebuild → _applyFilter() → tampilan diperbarui
-            _buildOptionButton(
-              icon: isActive
-                  ? Icons.pause_circle_outline_rounded
-                  : Icons.play_circle_outline_rounded,
-              label: isActive ? 'Set Inactive' : 'Set Active',
-              color: Colors.orange,
-              onTap: () {
-                Navigator.pop(context);
-                controller.toggleStatus(product['title']); // simpan ke controller
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isActive
-                          ? '${product['title']} dinonaktifkan'
-                          : '${product['title']} diaktifkan',
-                    ),
-                    backgroundColor: Colors.orange,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                Navigator.pop(context); // tutup bottom sheet dulu
+                // Meniru pola Navigator.push di seller/home/home_page.dart
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditProductPage(product: product),
                   ),
                 );
               },
             ),
             const SizedBox(height: 10),
 
-            // ── Delete ──
+            // ── Delete Product ──
             _buildOptionButton(
               icon: Icons.delete_outline_rounded,
               label: 'Delete Product',
@@ -690,7 +509,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
     );
   }
 
-  // ── Dialog konfirmasi sebelum hapus ──
+  // ── Dialog konfirmasi hapus ──
   void _showDeleteConfirmation(
     BuildContext context,
     Map<String, dynamic> product,
@@ -699,12 +518,12 @@ class _SellerProductPageState extends State<SellerProductPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: const Text('Hapus Produk?',
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Product?',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-          'Produk "${product['title']}" akan dihapus secara permanen.',
+          'Product "${product['title']}" will be permanently removed.',
           style: const TextStyle(color: Color(0xFF9098B1)),
         ),
         actions: [
@@ -716,10 +535,10 @@ class _SellerProductPageState extends State<SellerProductPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              controller.deleteProduct(product['title']); // simpan ke controller
+              controller.deleteProduct(product['title']);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${product['title']} dihapus'),
+                  content: Text('${product['title']} deleted'),
                   backgroundColor: Colors.red,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
@@ -733,7 +552,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Hapus'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -741,6 +560,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
   }
 
   // ── Helper tombol opsi bottom sheet ──
+  // Meniru pola _buildOptionButton di versi sebelumnya
   Widget _buildOptionButton({
     required IconData icon,
     required String label,
@@ -751,8 +571,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
