@@ -1,20 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:byteme_digital_marketplace/models/user_model.dart';
 
 class UserController extends ChangeNotifier {
-  // ── DATA DASAR (Dipakai Buyer & Seller) ──────────────────────────────────
-  String _username = 'Burung Camar';
-  String _displayName = ''; // Nama Toko / Nama Publik Seller
-  String _email = 'camar12345@gmail.com';
-  String _phoneNumber = '(+62) 812-5555-7777'; 
+  String _username = '';
+  String _displayName = '';
+  String _email = '';
+  String _phoneNumber = '';
   String? _profileImagePath;
-  String _role = 'Buyer'; // Default role
-
-  // ── DATA KHUSUS (Dipakai sesuai Role) ─────────────────────────────────────
+  String _role = 'Buyer';
   List<Map<String, dynamic>> _pendingOrders = [];
 
-  // ── GETTERS ──────────────────────────────────────────────────────────────
   String get username => _username;
   String get displayName => _displayName;
   String get email => _email;
@@ -25,7 +23,52 @@ class UserController extends ChangeNotifier {
 
   final ImagePicker _picker = ImagePicker();
 
-  // ── METHODS PROFIL ────────────────────────────────────────────────────────
+  // ── LOAD dari SharedPreferences saat app start
+  Future<void> loadUserFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    _username = prefs.getString('user_username') ?? '';
+    _email = prefs.getString('user_email') ?? '';
+    _phoneNumber = prefs.getString('user_phone') ?? '';
+    _role = prefs.getString('user_role') ?? 'Buyer';
+    _displayName = prefs.getString('user_displayname') ?? _username;
+    notifyListeners();
+  }
+
+  // ── SIMPAN data user dari response login/register
+  Future<void> setUserFromModel(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    _username = user.username;
+    _email = user.email;
+    _phoneNumber = user.phone;
+    _role = user.role;
+    _displayName = user.username;
+
+    await prefs.setString('user_username', user.username);
+    await prefs.setString('user_email', user.email);
+    await prefs.setString('user_phone', user.phone);
+    await prefs.setString('user_role', user.role);
+    await prefs.setString('user_displayname', user.username);
+
+    notifyListeners();
+  }
+
+  // ── CLEAR saat logout
+  Future<void> clearUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    _username = '';
+    _email = '';
+    _phoneNumber = '';
+    _role = 'Buyer';
+    _displayName = '';
+    _profileImagePath = null;
+    _pendingOrders = [];
+
+    notifyListeners();
+  }
+
   void updateUsername(String newUsername) {
     _username = newUsername;
     notifyListeners();
@@ -54,7 +97,6 @@ class UserController extends ChangeNotifier {
         maxHeight: 500,
         imageQuality: 80,
       );
-
       if (image != null) {
         _profileImagePath = image.path;
         notifyListeners();
@@ -64,7 +106,6 @@ class UserController extends ChangeNotifier {
     }
   }
 
-  // Method Update Profile Lengkap
   void updateProfile({
     String? username,
     String? displayName,
@@ -87,7 +128,6 @@ class UserController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── LOGIC PEMBAYARAN (Buyer) ──────────────────────────────────────────────
   void addPendingOrder(List<Map<String, dynamic>> items, int total) {
     _pendingOrders.add({
       'id': 'ORD-${DateTime.now().millisecondsSinceEpoch}',

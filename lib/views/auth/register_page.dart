@@ -5,6 +5,10 @@ import 'forgot_password_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart' as buyer;
 import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart' as seller;
 import 'package:byteme_digital_marketplace/controller/auth_controller.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+
+
 
 // ============================================================
 // REGISTER PAGE
@@ -63,45 +67,49 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   void _register() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
-  final result = await AuthController.register(
-    username: _usernameController.text.trim(),
-    password: _passwordController.text,
-    email: _emailController.text.trim(),
-    phone: _phoneController.text.trim(),
-    role: _selectedRole,
-  );
+    final result = await AuthController.register(
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      role: _selectedRole,
+    );
 
-  if (!mounted) return;
-  setState(() => _isLoading = false);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-  if (result.success) {
-    if (_selectedRole == 'Buyer') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const buyer.HomePage()),
-        (route) => false,
-      );
+    if (result.success && result.user != null) {
+      // ✅ SIMPAN data user ke UserController
+      await context.read<UserController>().setUserFromModel(result.user!);
+
+      if (_selectedRole == 'Buyer') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const buyer.HomePage()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
+          (route) => false,
+        );
+      }
     } else {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
-        (route) => false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: const Color(0xFFFF4D67),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
       );
     }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor: const Color(0xFFFF4D67),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
