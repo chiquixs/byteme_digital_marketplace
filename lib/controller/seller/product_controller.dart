@@ -19,7 +19,7 @@ class ProductController extends ChangeNotifier {
   final List<Map<String, dynamic>> _products = [
     {
       'title': 'Mobile App UI Kit',
-      'price': '\$29',
+      'price': 'Rp 1.500.000',
       'sales': '13k sales',
       'rating': 4.8,
       'status': 'active',
@@ -27,7 +27,7 @@ class ProductController extends ChangeNotifier {
     },
     {
       'title': 'Lightroom Presets Bundle',
-      'price': '\$15',
+      'price': 'Rp 250.000',
       'sales': '900 sales',
       'rating': 4.7,
       'status': 'active',
@@ -35,7 +35,7 @@ class ProductController extends ChangeNotifier {
     },
     {
       'title': 'Dashboard UI Kit',
-      'price': '\$19',
+      'price': 'Rp 190.000',
       'sales': '601 sales',
       'rating': 4.6,
       'status': 'active',
@@ -43,7 +43,7 @@ class ProductController extends ChangeNotifier {
     },
     {
       'title': 'Icon Pack - Minimal',
-      'price': '\$9',
+      'price': 'Rp 50.000',
       'sales': '435 sales',
       'rating': 4.5,
       'status': 'inactive',
