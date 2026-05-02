@@ -4,6 +4,7 @@ import 'login_page.dart';
 import 'forgot_password_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart' as buyer;
 import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart' as seller;
+import 'package:byteme_digital_marketplace/controller/auth_controller.dart';
 
 // ============================================================
 // REGISTER PAGE
@@ -62,16 +63,21 @@ class _RegisterPageState extends State<RegisterPage>
   }
 
   void _register() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    // TODO(backend): Panggil AuthController.register() di sini
-    await Future.delayed(const Duration(seconds: 2));
+  final result = await AuthController.register(
+    username: _usernameController.text.trim(),
+    password: _passwordController.text,
+    email: _emailController.text.trim(),
+    phone: _phoneController.text.trim(),
+    role: _selectedRole,
+  );
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+  if (!mounted) return;
+  setState(() => _isLoading = false);
 
-    // Navigasi berdasarkan role
+  if (result.success) {
     if (_selectedRole == 'Buyer') {
       Navigator.pushAndRemoveUntil(
         context,
@@ -85,7 +91,17 @@ class _RegisterPageState extends State<RegisterPage>
         (route) => false,
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: const Color(0xFFFF4D67),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
