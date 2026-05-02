@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:byteme_digital_marketplace/controller/auth_controller.dart';
 
 // ============================================================
 // FORGOT PASSWORD PAGE
@@ -49,18 +50,29 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   }
 
   void _sendReset() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    // TODO(backend): Panggil AuthController.sendPasswordReset(email) di sini
-    await Future.delayed(const Duration(seconds: 2));
+  final result = await AuthController.forgotPassword(
+    email: _emailController.text.trim(),
+  );
 
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _isSent = true;
-    });
+  if (!mounted) return;
+  setState(() => _isLoading = false);
+
+  if (result.success) {
+    setState(() => _isSent = true);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: const Color(0xFFFF4D67),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

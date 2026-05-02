@@ -3,6 +3,7 @@ import 'package:byteme_digital_marketplace/views/auth/register_page.dart';
 import 'package:byteme_digital_marketplace/views/auth/forgot_password_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/home/home_page.dart' as buyer;
 import 'package:byteme_digital_marketplace/views/seller/home/home_page.dart' as seller;
+import 'package:byteme_digital_marketplace/controller/auth_controller.dart';
 
 // ============================================================
 // LOGIN PAGE
@@ -54,15 +55,19 @@ class _LoginPageState extends State<LoginPage>
   }
 
 void _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    // Simulasi loading backend
-    await Future.delayed(const Duration(seconds: 2));
+  final result = await AuthController.login(
+    username: _usernameController.text.trim(),
+    password: _passwordController.text,
+    role: _selectedRole,
+  );
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+  if (!mounted) return;
+  setState(() => _isLoading = false);
 
+  if (result.success) {
     if (_selectedRole == 'Buyer') {
       Navigator.pushAndRemoveUntil(
         context,
@@ -72,11 +77,22 @@ void _login() async {
     } else {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()), 
+        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
         (route) => false,
       );
     }
+  } else {
+    // Tampilkan error snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: const Color(0xFFFF4D67),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
