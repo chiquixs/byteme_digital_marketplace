@@ -6,16 +6,17 @@ class AuthResult {
   final bool success;
   final String message;
   final UserModel? user;
+  final String? accountStatus; // 'active' | 'warning' | 'banned' | 'suspended'
 
   AuthResult({
     required this.success,
     required this.message,
     this.user,
+    this.accountStatus,
   });
 }
 
 class AuthController {
-  // ── LOGIN
   static Future<AuthResult> login({
     required String username,
     required String password,
@@ -23,24 +24,47 @@ class AuthController {
   }) async {
     try {
       final response = await ApiService.post('/auth/login', {
-        'username': username,   // sesuaikan dengan field di Laravel
+        'username': username,
         'password': password,
         'role': role.toLowerCase(),
       });
 
       final data = jsonDecode(response.body);
+      final status = data['status'] as String?;
 
       if (response.statusCode == 200) {
-        // Simpan token & role
-        await ApiService.saveToken(data['token']);
-        await ApiService.saveRole(role);
+        // Backend returns 200 for both 'active' and 'warning' accounts.
+        // 'warning' accounts still receive a token and can log in.
+        if (data['token'] != null) {
+          await ApiService.saveToken(data['token']);
+          await ApiService.saveRole(role);
+        }
 
         final user = UserModel.fromJson(data['user']);
-        return AuthResult(success: true, message: 'Login berhasil', user: user);
-      } else {
-        final msg = data['message'] ?? 'Login gagal';
-        return AuthResult(success: false, message: msg);
+
+        return AuthResult(
+          success: true,
+          message: data['message'] ?? 'Login berhasil',
+          user: user,
+          accountStatus: status ?? 'active',
+        );
       }
+
+      if (response.statusCode == 403) {
+        // banned / suspended — no token issued
+        final msg = data['message'] ?? 'Akun Anda telah diblokir.';
+        return AuthResult(
+          success: false,
+          message: msg,
+          accountStatus: status, // 'banned' or 'suspended'
+        );
+      }
+
+      // 401 wrong credentials, or other errors
+      return AuthResult(
+        success: false,
+        message: data['message'] ?? 'Login gagal',
+      );
     } catch (e) {
       return AuthResult(
         success: false,
@@ -49,7 +73,6 @@ class AuthController {
     }
   }
 
-  // ── REGISTER
   static Future<AuthResult> register({
     required String username,
     required String password,
@@ -59,38 +82,31 @@ class AuthController {
   }) async {
     try {
       final response = await ApiService.post('/auth/register', {
-        'username': username,   // sesuaikan dengan field di Laravel
+        'username': username,
         'password': password,
         'password_confirmation': password,
         'email': email,
-        'phone': phone,         // sesuaikan: no_hp / phone_number / dll
+        'phone': phone,
         'role': role.toLowerCase(),
       });
-
-      print('=== REGISTER RESPONSE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Body: ${response.body}');
-      print('=========================');
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         await ApiService.saveToken(data['token']);
         await ApiService.saveRole(role);
-
         final user = UserModel.fromJson(data['user']);
         return AuthResult(success: true, message: 'Registrasi berhasil', user: user);
-      } else {
-        // Tangkap validation errors dari Laravel
-        if (data['errors'] != null) {
-          final errors = data['errors'] as Map<String, dynamic>;
-          final firstError = errors.values.first;
-          final msg = firstError is List ? firstError.first : firstError.toString();
-          return AuthResult(success: false, message: msg);
-        }
-        final msg = data['message'] ?? 'Registrasi gagal';
+      }
+
+      if (data['errors'] != null) {
+        final errors = data['errors'] as Map<String, dynamic>;
+        final firstError = errors.values.first;
+        final msg = firstError is List ? firstError.first : firstError.toString();
         return AuthResult(success: false, message: msg);
       }
+
+      return AuthResult(success: false, message: data['message'] ?? 'Registrasi gagal');
     } catch (e) {
       return AuthResult(
         success: false,
@@ -99,35 +115,19 @@ class AuthController {
     }
   }
 
-  // ── FORGOT PASSWORD
   static Future<AuthResult> forgotPassword({required String email}) async {
     try {
-      final response = await ApiService.post('/auth/forgot-password', {
-        'email': email,
-      });
-
+      final response = await ApiService.post('/auth/forgot-password', {'email': email});
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200) {
-        return AuthResult(
-          success: true,
-          message: data['message'] ?? 'Email reset telah dikirim',
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: data['message'] ?? 'Gagal mengirim email reset',
-        );
+        return AuthResult(success: true, message: data['message'] ?? 'Email reset telah dikirim');
       }
+      return AuthResult(success: false, message: data['message'] ?? 'Gagal mengirim email reset');
     } catch (e) {
-      return AuthResult(
-        success: false,
-        message: 'Tidak dapat terhubung ke server.',
-      );
+      return AuthResult(success: false, message: 'Tidak dapat terhubung ke server.');
     }
   }
 
-  // ── LOGOUT
   static Future<void> logout() async {
     try {
       await ApiService.postAuth('/auth/logout', {});

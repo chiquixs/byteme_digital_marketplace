@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/buyer/payment/unpaid_order.dart'; // Import halaman timer
 import 'payment_selection_page.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:byteme_digital_marketplace/services/checkout_service.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<Map<String, dynamic>> selectedItems;
@@ -249,37 +251,91 @@ class _CheckoutPageState extends State<CheckoutPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
-            onPressed: () {
-              if (selectedPaymentMethod == null) {
-                // Notifikasi jika belum pilih
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please select a payment method first!'),
-                    backgroundColor: Colors.redAccent,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } else {
-                // 1. SIMPAN PESANAN KE CONTROLLER
-                Provider.of<UserController>(context, listen: false)
-                    .addPendingOrder(widget.selectedItems, total);
-
-                // 2. PINDAH KE HALAMAN UNPAID DENGAN TIMER
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UnpaidOrderPage(
-                      items: widget.selectedItems,
-                      totalAmount: total,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Place Order', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            onPressed: () => _placeOrder(context),
+            child: const Text(
+              'Place Order',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  bool _isPlacingOrder = false;
+
+  Future<void> _placeOrder(BuildContext context) async {
+    if (selectedPaymentMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a payment method first!'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isPlacingOrder) return;
+    setState(() => _isPlacingOrder = true);
+
+    // Collect the real backend IDs.
+    // Each cart item stored by KeranjangController has 'detail_keranjang_id'.
+    final ids = widget.selectedItems
+        .map((item) => item['detail_keranjang_id'] as String?)
+        .whereType<String>()
+        .toList();
+
+    if (ids.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Item tidak valid. Silakan kembali ke keranjang.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      setState(() => _isPlacingOrder = false);
+      return;
+    }
+
+    final result = await CheckoutService.checkout(detailKeranjangIds: ids);
+    if (!mounted) return;
+    setState(() => _isPlacingOrder = false);
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Open Midtrans payment page
+    final url = result.redirectUrl;
+    if (url != null && await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      // Navigate back to home — payment status will be updated via backend webhook
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Selesaikan pembayaran di browser. Email akses produk akan dikirim setelah pembayaran dikonfirmasi.'),
+            duration: Duration(seconds: 6),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tidak dapat membuka halaman pembayaran: $url'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }

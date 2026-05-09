@@ -75,4 +75,27 @@ class ApiService {
     final headers = await _authHeaders();
     return await http.get(uri, headers: headers);
   }
+
+  // POST multipart (for file uploads like products)
+static Future<http.Response> postMultipart(
+  String endpoint,
+  Map<String, String> fields,
+  {Map<String, String>? filePaths}
+  ) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final token = await getToken();
+    final request = http.MultipartRequest('POST', uri);
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    request.fields.addAll(fields);
+    if (filePaths != null) {
+      for (final entry in filePaths.entries) {
+        request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value));
+      }
+    }
+    final streamed = await request.send();
+    return await http.Response.fromStream(streamed);
+  }
 }

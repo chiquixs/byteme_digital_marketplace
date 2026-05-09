@@ -59,47 +59,61 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    final result = await AuthController.login(
-      username: _usernameController.text.trim(),
-      password: _passwordController.text,
-      role: _selectedRole,
-    );
+  final result = await AuthController.login(
+    username: _usernameController.text.trim(),
+    password: _passwordController.text,
+    role: _selectedRole,
+  );
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+  if (!mounted) return;
+  setState(() => _isLoading = false);
 
-    if (result.success && result.user != null) {
-      // ✅ SIMPAN data user ke UserController
-      await context.read<UserController>().setUserFromModel(result.user!);
+  if (result.success && result.user != null) {
+    await context.read<UserController>().setUserFromModel(result.user!);
 
-      if (_selectedRole == 'Buyer') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const buyer.HomePage()),
-          (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
-          (route) => false,
-        );
-      }
-    } else {
+    // Show warning banner if account has a warning status before navigating
+    if (result.accountStatus == 'warning') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.message),
-          backgroundColor: const Color(0xFFFF4D67),
+          backgroundColor: const Color(0xFFF59E0B),
+          duration: const Duration(seconds: 5),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
+
+    if (_selectedRole == 'Buyer') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const buyer.HomePage()),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
+        (route) => false,
+      );
+    }
+  } else {
+    // Banned / suspended / wrong credentials
+    final isBanned = result.accountStatus == 'banned' || result.accountStatus == 'suspended';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: isBanned ? const Color(0xFF7F1D1D) : const Color(0xFFFF4D67),
+        duration: Duration(seconds: isBanned ? 8 : 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
+}
   
   @override
   Widget build(BuildContext context) {
