@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../models/buyer/order_item.dart';
+import '../../../controller/buyer/order_controller.dart';
 
 class HistoryOrdersPage extends StatefulWidget {
   const HistoryOrdersPage({super.key});
@@ -9,14 +11,14 @@ class HistoryOrdersPage extends StatefulWidget {
 }
 
 class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
-  List<OrderItem> orders = [
-    OrderItem(id: 1, storeName: 'Official Store', productName: 'Girls E-Book', rating: 0),
-    OrderItem(id: 2, storeName: 'Official Store', productName: 'Materials E-Book', reviewText: 'Very helpful!', rating: 5),
-    OrderItem(id: 3, storeName: 'Official Store', productName: 'Personal Branding E-Book', reviewText: 'Good content', rating: 3),
-    OrderItem(id: 4, storeName: 'Official Store', productName: 'Template Canva', rating: 0),
-    OrderItem(id: 5, storeName: 'Official Store', productName: 'Project Proposal', rating: 0),
-    OrderItem(id: 6, storeName: 'Official Store', productName: 'Web Design', reviewText: 'Nice design', rating: 3),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Fetch orders on init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderController>().fetchHistoryOrders();
+    });
+  }
 
   // FUNGSI NOTIFIKASI
   void _showSuccessNotification() {
@@ -118,8 +120,8 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                     backgroundColor: const Color(0xFF3D4270),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  onPressed: selectedStars == 0 ? null : () {
-                    _updateOrderRating(order.id, selectedStars, reviewController.text);
+                  onPressed: selectedStars == 0 ? null : () async {
+                    await context.read<OrderController>().submitRating(order.id, selectedStars, reviewController.text);
                     Navigator.pop(context); // Tutup dialog rating
                     _showSuccessNotification(); // Munculkan notifikasi sukses di tengah
                   },
@@ -133,56 +135,54 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
     );
   }
 
-  void _updateOrderRating(int id, int rating, String review) {
-    setState(() {
-      int index = orders.indexWhere((o) => o.id == id);
-      if (index != -1) {
-        orders[index] = orders[index].copyWith(rating: rating, reviewText: review);
-      }
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    final List<OrderItem> unratedOrders = orders.where((o) => o.rating == 0).toList();
-    final List<OrderItem> ratedOrders = orders.where((o) => o.rating > 0).toList();
+    return Consumer<OrderController>(
+      builder: (context, orderController, child) {
+        final orders = orderController.historyOrders;
+        final List<OrderItem> unratedOrders = orders.where((o) => o.rating == null || o.rating == 0).toList();
+        final List<OrderItem> ratedOrders = orders.where((o) => o.rating != null && o.rating! > 0).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8E8F0),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('My Orders', style: TextStyle(color: Color(0xFF2A2A2A), fontWeight: FontWeight.bold, fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2A2A2A), size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: orders.isEmpty
-          ? const Center(child: Text('No orders yet'))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (unratedOrders.isNotEmpty) ...[
-                  const Text('Waiting for Rating', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  ...unratedOrders.map((order) => _OrderCard(
-                        order: order,
-                        onTap: () => _showRatingDialog(order), 
-                      )),
-                ],
-                if (unratedOrders.isNotEmpty && ratedOrders.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Divider(thickness: 1),
-                  ),
-                if (ratedOrders.isNotEmpty) ...[
-                  const Text('Rated History', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  ...ratedOrders.map((order) => _OrderCard(order: order)),
-                ],
-              ],
+        return Scaffold(
+          backgroundColor: const Color(0xFFE8E8F0),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('My Orders', style: TextStyle(color: Color(0xFF2A2A2A), fontWeight: FontWeight.bold, fontSize: 18)),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2A2A2A), size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
+          ),
+          body: orders.isEmpty
+              ? const Center(child: Text('No orders yet'))
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (unratedOrders.isNotEmpty) ...[
+                      const Text('Waiting for Rating', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      ...unratedOrders.map((order) => _OrderCard(
+                            order: order,
+                            onTap: () => _showRatingDialog(order), 
+                          )),
+                    ],
+                    if (unratedOrders.isNotEmpty && ratedOrders.isNotEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(thickness: 1),
+                      ),
+                    if (ratedOrders.isNotEmpty) ...[
+                      const Text('Rated History', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      ...ratedOrders.map((order) => _OrderCard(order: order)),
+                    ],
+                  ],
+                ),
+        );
+      },
     );
   }
 }
@@ -241,8 +241,8 @@ class _OrderCard extends StatelessWidget {
       children: [
         Row(
           children: List.generate(5, (i) => Icon(
-            i < order.rating ? Icons.star_rounded : Icons.star_border_rounded,
-            size: 18, color: i < order.rating ? const Color(0xFFFFB800) : Colors.grey,
+            i < (order.rating ?? 0) ? Icons.star_rounded : Icons.star_border_rounded,
+            size: 18, color: i < (order.rating ?? 0) ? const Color(0xFFFFB800) : Colors.grey,
           )),
         ),
         if (order.reviewText != null)

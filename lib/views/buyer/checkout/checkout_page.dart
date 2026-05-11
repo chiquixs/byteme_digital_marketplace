@@ -6,6 +6,7 @@ import 'package:byteme_digital_marketplace/views/buyer/payment/unpaid_order.dart
 import 'payment_selection_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:byteme_digital_marketplace/services/checkout_service.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/order_controller.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<Map<String, dynamic>> selectedItems;
@@ -311,6 +312,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
       return;
+    }
+
+    // Update current orders after successful checkout
+    if (mounted) {
+      Provider.of<OrderController>(context, listen: false).fetchCurrentOrders();
     }
 
     // Open Midtrans payment page

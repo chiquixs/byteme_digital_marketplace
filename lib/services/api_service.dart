@@ -98,4 +98,11 @@ static Future<http.Response> postMultipart(
     final streamed = await request.send();
     return await http.Response.fromStream(streamed);
   }
+  
+  // Tambahkan method ini di class ApiService
+    static Future<http.Response> delete(String endpoint) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final headers = await _authHeaders();
+    return await http.delete(uri, headers: headers);
+  }
 }
