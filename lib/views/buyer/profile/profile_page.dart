@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/order_controller.dart';
 import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/my_orders/history_orders_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/wishlist/wishlist_page.dart';
@@ -34,9 +35,17 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   static const Color _starColor = Color(0xFF3D4270);
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderController>().fetchCurrentOrders();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<UserController>(
-      builder: (context, userController, child) {
+    return Consumer2<UserController, OrderController>(
+      builder: (context, userController, orderController, child) {
         return Container(
           color: _bgLight,
           child: SafeArea(
@@ -52,7 +61,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPurchaseCard(),
+                        _buildPurchaseCard(orderController),
                         const SizedBox(height: 16),
 
                         _buildMenuItem(
@@ -339,7 +348,9 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   // ----------------------------------------------------------
   // PURCHASE CARD
   // ----------------------------------------------------------
-  Widget _buildPurchaseCard() {
+  Widget _buildPurchaseCard(OrderController orderController) {
+    final currentOrders = orderController.currentOrders;
+
     return Container(
       decoration: BoxDecoration(
         color: _cardBg,
@@ -367,13 +378,32 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             ),
           ),
           const Divider(height: 1, thickness: 0.5),
-          _buildProductRow(title: 'Barang 1', rating: 5, reviews: '1.2k reviews'),
-          const Divider(height: 1, thickness: 0.5, indent: 16),
-          _buildProductRow(
-              title: 'Barang 2',
-              rating: 5,
-              reviews: '1.2k reviews',
-              isLast: true),
+          if (currentOrders.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'No current orders',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...currentOrders.map((order) => Column(
+              children: [
+                _buildProductRow(
+                  title: order.productName,
+                  rating: order.rating ?? 0,
+                  reviews: '${order.quantity} items',
+                  isLast: order == currentOrders.last,
+                ),
+                if (order != currentOrders.last)
+                  const Divider(height: 1, thickness: 0.5, indent: 16),
+              ],
+            )),
         ],
       ),
     );

@@ -56,7 +56,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
     final String title = product['title'] ?? '';
     final String priceLabel = product['priceLabel'] ?? product['price'] ?? '';
-    final String reviews = product['reviews'] ?? '';
+    final String reviews = '${product['reviews'] ?? 0}';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F8),
@@ -390,65 +390,91 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildImageCarousel() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          SizedBox(
-            height: 300,
-            child: PageView.builder(
-              controller: _imageController,
-              itemCount: _images.length,
-              onPageChanged: (i) => setState(() => _currentImage = i),
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      _images[index],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F2F8),
-                          borderRadius: BorderRadius.circular(16),
+  return Container(
+    color: Colors.white,
+    child: Column(
+      children: [
+        SizedBox(
+          height: 300,
+          child: PageView.builder(
+            controller: _imageController,
+            itemCount: _images.length,
+            onPageChanged: (i) => setState(() => _currentImage = i),
+            itemBuilder: (context, index) {
+              final img = _images[index];
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  // ✅ Support URL dari API dan asset lokal
+                  child: img.startsWith('http')
+                      ? Image.network(
+                          img,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F2F8),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.image_rounded,
+                                color: Color(0xFFB0B8CC), size: 60),
+                          ),
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F2F8),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF6B7FD7),
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          img,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F2F8),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.image_rounded,
+                                color: Color(0xFFB0B8CC), size: 60),
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.image_rounded,
-                          color: Color(0xFFB0B8CC),
-                          size: 60,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_images.length, (i) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentImage == i ? 20 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentImage == i
-                      ? const Color(0xFF6B7FD7)
-                      : const Color(0xFFD0D5E8),
-                  borderRadius: BorderRadius.circular(3),
                 ),
               );
-            }),
+            },
           ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_images.length, (i) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: _currentImage == i ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _currentImage == i
+                    ? const Color(0xFF6B7FD7)
+                    : const Color(0xFFD0D5E8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+      ],
+    ),
+  );
+}
   Widget _buildSellerInfo(Map<String, dynamic> product) {
     return Row(
       children: [
