@@ -9,6 +9,7 @@ import 'package:byteme_digital_marketplace/views/seller/earnings/earnings_page.d
 import 'package:byteme_digital_marketplace/views/seller/order/seller_order_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/product/product_detail_page.dart';
 import 'package:byteme_digital_marketplace/services/api_service.dart';
+import 'package:byteme_digital_marketplace/views/buyer/eksplore/eksplore_page.dart';
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({super.key});
@@ -25,15 +26,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   List<Widget> get _pages => [
-        SellerHomeContent(
-          onMorePressed: () => _switchTab(1),
-          onWithdrawPressed: () => _switchTab(3),
-        ),
-        SellerProductPage(onBackPressed: () => _switchTab(0)),
-        SellerOrderPage(onBackPressed: () => _switchTab(0)),
-        EarningsPage(onBackPressed: () => _switchTab(0)),
-        const SellerProfilePage(),
-      ];
+    SellerHomeContent(
+      onMorePressed: () => _switchTab(1),
+      onWithdrawPressed: () => _switchTab(3),
+    ),
+    SellerProductPage(onBackPressed: () => _switchTab(0)),
+    SellerOrderPage(onBackPressed: () => _switchTab(0)),
+    EarningsPage(onBackPressed: () => _switchTab(0)),
+    const SellerProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +51,10 @@ class _SellerHomePageState extends State<SellerHomePage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -4))
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
         ],
       ),
       child: SafeArea(
@@ -88,20 +90,24 @@ class _SellerHomePageState extends State<SellerHomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
+            Icon(
+              icon,
+              color: isSelected
+                  ? const Color(0xFF6B7FD7)
+                  : const Color(0xFFB0B8CC),
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
                     ? const Color(0xFF6B7FD7)
                     : const Color(0xFFB0B8CC),
-                size: 24),
-            const SizedBox(height: 4),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected
-                        ? const Color(0xFF6B7FD7)
-                        : const Color(0xFFB0B8CC))),
+              ),
+            ),
           ],
         ),
       ),
@@ -152,33 +158,37 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     });
 
     try {
-      final productRes = await ApiService.get('/seller/products');
-      final earningsRes = await ApiService.get('/seller/earnings');
+      // ✅ Ganti /seller/products → /produk (semua produk approved)
+      final productRes = await ApiService.get('/produk');
+      // ✅ Ganti /seller/earnings → /my-produk untuk hitung total produk seller
+      final myProdukRes = await ApiService.get('/my-produk');
 
       if (!mounted) return;
 
       if (productRes.statusCode == 200) {
-        final productData = jsonDecode(productRes.body);
-        final List rawProducts =
-            productData['data'] ?? productData['products'] ?? [];
+        final decoded = jsonDecode(productRes.body);
+        final List rawProducts = decoded is List
+            ? decoded
+            : (decoded['data'] ?? decoded['products'] ?? []);
         setState(() {
           _products = rawProducts
-              .map<Map<String, dynamic>>(
-                  (e) => Map<String, dynamic>.from(e))
+              .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
               .toList();
-          _totalProducts = _products.length;
         });
       }
 
-      if (earningsRes.statusCode == 200) {
-        final earningsData = jsonDecode(earningsRes.body);
-        final data = earningsData['data'] ?? earningsData;
+      if (myProdukRes.statusCode == 200) {
+        final decoded = jsonDecode(myProdukRes.body);
+        final List myProducts = decoded is List
+            ? decoded
+            : (decoded['data'] ?? decoded['products'] ?? []);
         setState(() {
-          _totalSales = (data['total_sales'] as num?)?.toInt() ?? 0;
-          _totalBalance =
-              (data['total_balance'] as num?)?.toDouble() ?? 0.0;
-          _availableWithdraw =
-              (data['available_withdraw'] as num?)?.toDouble() ?? 0.0;
+          _totalProducts = myProducts.length;
+          // Hitung total sales dari produk seller sendiri
+          _totalSales = myProducts.fold(
+            0,
+            (sum, p) => sum + ((p['total_terjual'] as num?)?.toInt() ?? 0),
+          );
         });
       }
     } catch (_) {
@@ -236,15 +246,18 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Welcome 😊',
-                          style:
-                              TextStyle(color: Colors.grey, fontSize: 12)),
+                      const Text(
+                        'Welcome 😊',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
                       Text(
                         userController.displayName.isEmpty
                             ? userController.username
                             : userController.displayName,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -252,19 +265,27 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.notifications_none_rounded,
-                        color: accentColor, size: 22),
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: accentColor,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
 
               const SizedBox(height: 24),
-              const Text('Vendor Dashboard',
-                  style: TextStyle(
-                      color: accentColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18)),
+              const Text(
+                'Vendor Dashboard',
+                style: TextStyle(
+                  color: accentColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
               const SizedBox(height: 16),
 
               // Balance Card
@@ -295,16 +316,25 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Discover Product',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: accentColor)),
+                  const Text(
+                    'Discover Product',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: accentColor,
+                    ),
+                  ),
                   GestureDetector(
-                    onTap: widget.onMorePressed,
-                    child: const Text('more >',
-                        style:
-                            TextStyle(color: primaryBlue, fontSize: 13)),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ExplorePage(isSellerView: true),
+                      ),
+                    ),
+                    child: const Text(
+                      'more >',
+                      style: TextStyle(color: primaryBlue, fontSize: 13),
+                    ),
                   ),
                 ],
               ),
@@ -319,8 +349,10 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   child: TextButton.icon(
                     onPressed: _fetchDashboardData,
                     icon: const Icon(Icons.refresh, color: primaryBlue),
-                    label: const Text('Coba lagi',
-                        style: TextStyle(color: primaryBlue)),
+                    label: const Text(
+                      'Coba lagi',
+                      style: TextStyle(color: primaryBlue),
+                    ),
                   ),
                 ),
               ],
@@ -338,13 +370,15 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-            colors: [Color(0xFF6B7FD7), Color(0xFF8B90C1)]),
+          colors: [Color(0xFF6B7FD7), Color(0xFF8B90C1)],
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFF6B7FD7).withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8))
+            color: const Color(0xFF6B7FD7).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
@@ -353,24 +387,27 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total Balance',
-                  style:
-                      TextStyle(color: Colors.white70, fontSize: 13)),
-              Icon(Icons.account_balance_wallet_outlined,
-                  color: Colors.white.withOpacity(0.5), size: 20),
+              const Text(
+                'Total Balance',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: Colors.white.withOpacity(0.5),
+                size: 20,
+              ),
             ],
           ),
           const SizedBox(height: 6),
           _isLoading
               ? _shimmerBox(width: 140, height: 36)
               : Text(
-                  _totalBalance == 0
-                      ? 'Rp 0'
-                      : _formatRupiah(_totalBalance),
+                  _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
           const SizedBox(height: 20),
           Row(
@@ -379,25 +416,30 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Available for Withdraw',
-                      style: TextStyle(
-                          color: Colors.white70, fontSize: 11)),
+                  const Text(
+                    'Available for Withdraw',
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
                   const SizedBox(height: 4),
                   _isLoading
                       ? _shimmerBox(width: 90, height: 20)
                       : _availableWithdraw == 0
-                          ? const Text('Belum ada saldo',
-                              style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic))
-                          : Text(
-                              _formatRupiah(_availableWithdraw),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold),
-                            ),
+                      ? const Text(
+                          'Belum ada saldo',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      : Text(
+                          _formatRupiah(_availableWithdraw),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ],
               ),
               ElevatedButton(
@@ -406,12 +448,14 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF3D4270),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 0,
                 ),
-                child: const Text('Withdraw',
-                    style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Withdraw',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -422,21 +466,28 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
 
   // ── Stat Card ────────────────────────────────────────────────────────────
   Widget _buildStatCard(
-      String label, String? value, IconData icon, String emptyText) {
+    String label,
+    String? value,
+    IconData icon,
+    String emptyText,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.grey, fontSize: 11)),
+                Text(
+                  label,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
                 Icon(icon, size: 16, color: primaryBlue),
               ],
             ),
@@ -444,14 +495,21 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             value == null
                 ? _shimmerBox(width: 50, height: 22)
                 : value == '0'
-                    ? Text(emptyText,
-                        style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic))
-                    : Text(value,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
+                ? Text(
+                    emptyText,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
+                : Text(
+                    value,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
           ],
         ),
       ),
@@ -461,16 +519,13 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
   // ── Product Section ──────────────────────────────────────────────────────
   Widget _buildProductSection() {
     if (_isLoading) {
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 4,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.75),
-        itemBuilder: (_, __) => _buildSkeletonCard(),
+      return SizedBox(
+        height: 200,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: 3,
+          itemBuilder: (_, __) => _buildSkeletonCard(),
+        ),
       );
     }
 
@@ -490,35 +545,36 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       );
     }
 
-    final preview = _products.take(4).toList();
+    // ✅ Ambil max 5 produk, tampil horizontal scroll
+    final preview = _products.take(5).toList();
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: preview.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.75),
-      itemBuilder: (context, index) =>
-          _buildProductCard(context, preview[index]),
+    return SizedBox(
+      height: 220,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: preview.length,
+        itemBuilder: (context, index) =>
+            _buildProductCard(context, preview[index]),
+      ),
     );
   }
 
-  Widget _buildProductCard(
-      BuildContext context, Map<String, dynamic> product) {
-    final String title = product['nama_produk'] ??
+  Widget _buildProductCard(BuildContext context, Map<String, dynamic> product) {
+    final String title =
+        product['nama_produk'] ??
         product['title'] ??
         product['name'] ??
         'Produk';
-    final dynamic rawPrice =
-        product['harga'] ?? product['price'] ?? 0;
-    final double price = (rawPrice as num).toDouble();
-    final double rating =
-        (product['rating'] as num?)?.toDouble() ?? 0.0;
+    final dynamic rawPrice = product['harga'] ?? product['price'] ?? 0;
+    final double price = rawPrice is num
+        ? rawPrice.toDouble()
+        : double.tryParse(rawPrice.toString()) ?? 0.0;
+    final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
     final String? imageUrl =
-        product['gambar'] ?? product['image_url'] ?? product['image'];
+        product['file_path'] ??
+        product['gambar'] ??
+        product['image_url'] ??
+        product['image'];
 
     return GestureDetector(
       onTap: () {
@@ -529,8 +585,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
               product: {
                 ...product,
                 'title': title,
-                'price': price,
-                'priceLabel': _formatRupiah(price),
+                'price': _formatRupiah(price),
                 'rating': rating,
                 'image': imageUrl ?? '',
               },
@@ -539,49 +594,67 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
           ),
         );
       },
+      // ✅ Tambah width dan margin untuk horizontal scroll
       child: Container(
+        width: 150,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16)),
+            // Gambar
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: SizedBox(
+                height: 110,
+                width: double.infinity,
                 child: imageUrl != null && imageUrl.isNotEmpty
                     ? Image.network(
                         imageUrl,
-                        width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _placeholderImage(),
+                        errorBuilder: (_, __, ___) => _placeholderImage(),
                       )
                     : _placeholderImage(),
               ),
             ),
+            // Info
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star,
-                          color: Colors.amber, size: 12),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.star, color: Colors.amber, size: 11),
+                      const SizedBox(width: 3),
                       Text(
-                        rating > 0
-                            ? rating.toStringAsFixed(1)
-                            : 'Belum ada rating',
+                        rating > 0 ? rating.toStringAsFixed(1) : 'Baru',
                         style: const TextStyle(
-                            color: Colors.grey, fontSize: 10),
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -589,9 +662,10 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   Text(
                     price > 0 ? _formatRupiah(price) : 'Gratis',
                     style: const TextStyle(
-                        color: primaryBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14),
+                      color: primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -608,8 +682,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     return Container(
       width: double.infinity,
       color: const Color(0xFFEEF0FB),
-      child: const Icon(Icons.image_outlined,
-          color: primaryBlue, size: 36),
+      child: const Icon(Icons.image_outlined, color: primaryBlue, size: 36),
     );
   }
 
@@ -622,21 +695,27 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
           Icon(icon, size: 48, color: const Color(0xFFB0B8CC)),
           const SizedBox(height: 12),
-          Text(message,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: accentColor)),
+          Text(
+            message,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: accentColor,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(sub,
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(
+            sub,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -644,37 +723,37 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
 
   Widget _buildSkeletonCard() {
     return Container(
+      width: 150, // ✅ tambah width
+      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16))),
+          Container(
+            height: 110,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                    height: 12,
-                    width: double.infinity,
-                    color: Colors.grey.shade200),
+                  height: 12,
+                  width: double.infinity,
+                  color: Colors.grey.shade200,
+                ),
                 const SizedBox(height: 8),
-                Container(
-                    height: 10,
-                    width: 60,
-                    color: Colors.grey.shade200),
+                Container(height: 10, width: 60, color: Colors.grey.shade200),
                 const SizedBox(height: 8),
-                Container(
-                    height: 12,
-                    width: 80,
-                    color: Colors.grey.shade200),
+                Container(height: 12, width: 80, color: Colors.grey.shade200),
               ],
             ),
           ),
@@ -688,8 +767,9 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       width: width,
       height: height,
       decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(6)),
+        color: Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(6),
+      ),
     );
   }
 }
