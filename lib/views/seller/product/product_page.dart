@@ -49,9 +49,9 @@ class _SellerProductPageState extends State<SellerProductPage> {
   void initState() {
     super.initState();
     _searchController.addListener(_applyFilter);
-
-    // Jalankan filter pertama kali setelah frame pertama selesai render
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ Fetch hanya produk milik seller yang login
+      context.read<ProductController>().fetchMyProducts();
       _applyFilter();
     });
   }
@@ -93,62 +93,75 @@ class _SellerProductPageState extends State<SellerProductPage> {
   // BUILD
   // ──────────────────────────────────────────
   @override
-  Widget build(BuildContext context) {
-    return Consumer<ProductController>(
-      builder: (context, productController, child) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _applyFilter();
-        });
+Widget build(BuildContext context) {
+  return Consumer<ProductController>(
+    builder: (context, productController, child) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _applyFilter();
+      });
 
-        return Scaffold(
-          backgroundColor: _bgColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildSearchBar(),
-                // ── Filter tab Active/Inactive DIHAPUS ──
-                Expanded(
-                  child: _filteredProducts.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                          itemCount: _filteredProducts.length,
-                          itemBuilder: (context, index) {
-                            return _buildProductCard(
-                              _filteredProducts[index],
-                              productController,
-                            );
-                          },
+      return Scaffold(
+        backgroundColor: _bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildSearchBar(),
+
+              // ── LIST PRODUK ──
+              Expanded(
+                child: productController.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF6B7FD7),
                         ),
-                ),
-              ],
-            ),
+                      )
+                    : _filteredProducts.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                            itemCount: _filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              return _buildProductCard(
+                                _filteredProducts[index],
+                                productController,
+                              );
+                            },
+                          ),
+              ),
+            ],
           ),
+        ),
 
-          // ── TOMBOL TAMBAH PRODUK ──
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              // Meniru pola Navigator.push di seller/home/home_page.dart
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddProductPage()),
-              );
-            },
-            backgroundColor: _primaryBlue,
-            foregroundColor: Colors.white,
-            elevation: 4,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text(
-              'Add New Product',
-              style: TextStyle(fontWeight: FontWeight.bold),
+        // ── TOMBOL TAMBAH PRODUK ──
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AddProductPage(),
+              ),
+            );
+          },
+          backgroundColor: _primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text(
+            'Add New Product',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        );
-      },
-    );
-  }
+        ),
+
+        floatingActionButtonLocation:
+            FloatingActionButtonLocation.centerFloat,
+      );
+    },
+  );
+}
 
   // ----------------------------------------------------------
   // HEADER
@@ -254,8 +267,11 @@ class _SellerProductPageState extends State<SellerProductPage> {
                 onTap: () => _searchController.clear(),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
-                  child:
-                      Icon(Icons.close_rounded, color: Color(0xFF9098B1), size: 20),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: Color(0xFF9098B1),
+                    size: 20,
+                  ),
                 ),
               )
             else
@@ -297,20 +313,21 @@ class _SellerProductPageState extends State<SellerProductPage> {
             child: SizedBox(
               width: 80,
               height: 80,
-              child: Image.asset(
-                product['image'],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: const Color(0xFFF0F2F8),
-                    child: const Icon(
-                      Icons.image_rounded,
-                      color: Color(0xFFB0B8CC),
-                      size: 32,
-                    ),
-                  );
-                },
-              ),
+              child:
+                  product['image'] != null &&
+                      (product['image'] as String).isNotEmpty
+                  ? (product['image'] as String).startsWith('http')
+                        ? Image.network(
+                            product['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                          )
+                        : Image.asset(
+                            product['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                          )
+                  : _imagePlaceholder(),
             ),
           ),
           const SizedBox(width: 14),
@@ -353,7 +370,9 @@ class _SellerProductPageState extends State<SellerProductPage> {
                     Text(
                       '${product['rating']}',
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF9098B1)),
+                        fontSize: 11,
+                        color: Color(0xFF9098B1),
+                      ),
                     ),
                   ],
                 ),
@@ -407,7 +426,10 @@ class _SellerProductPageState extends State<SellerProductPage> {
             onPressed: () => _searchController.clear(),
             child: const Text(
               'Reset pencarian',
-              style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: _primaryBlue,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -425,9 +447,17 @@ class _SellerProductPageState extends State<SellerProductPage> {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 13);
         } else if (i < rating) {
-          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 13);
+          return const Icon(
+            Icons.star_half,
+            color: Color(0xFFFFB800),
+            size: 13,
+          );
         } else {
-          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 13);
+          return const Icon(
+            Icons.star_border,
+            color: Color(0xFFD0D5E8),
+            size: 13,
+          );
         }
       }),
     );
@@ -518,10 +548,11 @@ class _SellerProductPageState extends State<SellerProductPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Product?',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete Product?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Product "${product['title']}" will be permanently removed.',
           style: const TextStyle(color: Color(0xFF9098B1)),
@@ -529,20 +560,23 @@ class _SellerProductPageState extends State<SellerProductPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal',
-                style: TextStyle(color: Color(0xFF9098B1))),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Color(0xFF9098B1)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              controller.deleteProduct(product['title']);
+              controller.deleteProduct(product['id'] as String);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${product['title']} deleted'),
                   backgroundColor: Colors.red,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
             },
@@ -550,11 +584,23 @@ class _SellerProductPageState extends State<SellerProductPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      color: const Color(0xFFF0F2F8),
+      child: const Icon(
+        Icons.image_rounded,
+        color: Color(0xFFB0B8CC),
+        size: 32,
       ),
     );
   }
