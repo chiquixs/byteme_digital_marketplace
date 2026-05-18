@@ -3,37 +3,30 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Ganti dengan IP lokal kamu saat development
-  // Jika pakai emulator Android: http://10.0.2.2:8000/api
-  // Jika pakai device fisik: http://IP_LAPTOP_KAMU:8000/api
- static const String baseUrl = 'https://backend-laravel-byteme-production.up.railway.app/api';
+  static const String baseUrl =
+      'https://backend-laravel-byteme-production.up.railway.app/api';
 
-  // ── Simpan token ke local storage
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
   }
 
-  // ── Ambil token dari local storage
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('auth_token');
   }
 
-  // ── Hapus token (logout)
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_role');
   }
 
-  // ── Simpan role user
   static Future<void> saveRole(String role) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_role', role);
   }
 
-  // ── Header dengan token
   static Future<Map<String, String>> _authHeaders() async {
     final token = await getToken();
     return {
@@ -43,7 +36,7 @@ class ApiService {
     };
   }
 
-  // ── POST tanpa auth
+  // POST tanpa auth
   static Future<http.Response> post(
     String endpoint,
     Map<String, dynamic> body,
@@ -59,7 +52,7 @@ class ApiService {
     );
   }
 
-  // ── POST dengan auth token
+  // POST dengan auth token (JSON)
   static Future<http.Response> postAuth(
     String endpoint,
     Map<String, dynamic> body,
@@ -69,19 +62,19 @@ class ApiService {
     return await http.post(uri, headers: headers, body: jsonEncode(body));
   }
 
-  // ── GET dengan auth token
+  // GET dengan auth token
   static Future<http.Response> get(String endpoint) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     final headers = await _authHeaders();
     return await http.get(uri, headers: headers);
   }
 
-  // POST multipart (for file uploads like products)
-static Future<http.Response> postMultipart(
-  String endpoint,
-  Map<String, String> fields,
-  {Map<String, String>? filePaths}
-  ) async {
+  // POST multipart (untuk upload produk)
+  static Future<http.Response> postMultipart(
+    String endpoint,
+    Map<String, String> fields, {
+    Map<String, String>? filePaths,
+  }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     final token = await getToken();
     final request = http.MultipartRequest('POST', uri);
@@ -92,15 +85,51 @@ static Future<http.Response> postMultipart(
     request.fields.addAll(fields);
     if (filePaths != null) {
       for (final entry in filePaths.entries) {
-        request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value));
+        request.files
+            .add(await http.MultipartFile.fromPath(entry.key, entry.value));
       }
     }
     final streamed = await request.send();
     return await http.Response.fromStream(streamed);
   }
-  
-  // Tambahkan method ini di class ApiService
-    static Future<http.Response> delete(String endpoint) async {
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // UPDATE PROFILE — selalu gunakan multipart/form-data (POST)
+  // Mengapa selalu multipart? Karena Laravel route sudah di-set POST dan
+  // http.MultipartRequest tidak bisa PATCH. Tanpa foto pun tetap multipart
+  // agar method dan Content-Type konsisten, menghindari "route not found".
+  // ─────────────────────────────────────────────────────────────────────────
+  static Future<http.Response> updateProfileMultipart(
+    Map<String, String> fields, {
+    String? imagePath,
+  }) async {
+    const endpoint = '/auth/update';
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final token = await getToken();
+
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+
+    // Kirim semua field teks
+    request.fields.addAll(fields);
+
+    // Tambahkan file foto hanya jika ada
+    if (imagePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('profile_image', imagePath),
+      );
+    }
+
+    final streamed = await request.send();
+    return await http.Response.fromStream(streamed);
+  }
+
+  // DELETE dengan auth token
+  static Future<http.Response> delete(String endpoint) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     final headers = await _authHeaders();
     return await http.delete(uri, headers: headers);

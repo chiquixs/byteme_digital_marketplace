@@ -148,8 +148,12 @@ class SellerProfilePage extends StatelessWidget {
                       backgroundColor: const Color(0xFF6B7FD7).withOpacity(0.1),
                       backgroundImage: user.profileImagePath != null
                           ? FileImage(File(user.profileImagePath!))
-                          : null,
-                      child: user.profileImagePath == null
+                              as ImageProvider
+                          : user.profileImageUrl != null
+                              ? NetworkImage(user.profileImageUrl!)
+                              : null,
+                      child: (user.profileImagePath == null &&
+                              user.profileImageUrl == null)
                           ? const Icon(Icons.person,
                               size: 35, color: Color(0xFF3D4270))
                           : null,

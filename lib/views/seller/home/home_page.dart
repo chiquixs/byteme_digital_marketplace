@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -220,7 +221,16 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   CircleAvatar(
                     radius: 26,
                     backgroundColor: accentColor.withOpacity(0.1),
-                    child: const Icon(Icons.person, color: accentColor),
+                    backgroundImage: userController.profileImagePath != null
+                        ? FileImage(File(userController.profileImagePath!))
+                            as ImageProvider
+                        : userController.profileImageUrl != null
+                            ? NetworkImage(userController.profileImageUrl!)
+                            : null,
+                    child: (userController.profileImagePath == null &&
+                            userController.profileImageUrl == null)
+                        ? const Icon(Icons.person, color: accentColor)
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Column(

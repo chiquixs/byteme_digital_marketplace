@@ -304,9 +304,15 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                       image: FileImage(File(userController.profileImagePath!)),
                       fit: BoxFit.cover,
                     )
-                  : null,
+                  : userController.profileImageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(userController.profileImageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
             ),
-            child: userController.profileImagePath == null
+            child: (userController.profileImagePath == null &&
+                    userController.profileImageUrl == null)
                 ? const Icon(Icons.person, color: _white, size: 32)
                 : null,
           ),
