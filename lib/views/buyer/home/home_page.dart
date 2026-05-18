@@ -354,17 +354,23 @@ class _HomeContentState extends State<HomeContent> {
                       size: 28,
                     ),
                   )
-                : Image.asset(
-                    'assets/images/profile.jpeg',
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.person,
-                      color: Color(0xFF6B7FD7),
-                      size: 28,
-                    ),
-                  ),
+                : userController.profileImageUrl != null
+                    ? Image.network(
+                        userController.profileImageUrl!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person,
+                          color: Color(0xFF6B7FD7),
+                          size: 28,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: Color(0xFF6B7FD7),
+                        size: 28,
+                      ),
           ),
         ),
         const SizedBox(width: 12),
