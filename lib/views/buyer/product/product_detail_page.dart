@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../wishlist/wishlist_page.dart';
+import '../../../models/review_model.dart';
+import '../../../services/review_service.dart';
 import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
@@ -11,8 +13,8 @@ class ProductDetailPage extends StatefulWidget {
   final bool isSellerView; // Tambahkan ini
 
   const ProductDetailPage({
-    super.key, 
-    required this.product, 
+    super.key,
+    required this.product,
     this.isSellerView = false, // Default false (buyer)
   });
 
@@ -21,6 +23,11 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
+  Map<String, dynamic> _summary = {'rata_rata': 0, 'total': 0};
+  List<ReviewModel> _reviews = [];
+  bool _isLoadingReviews = false;
+
+  String get _produkId => widget.product['id']?.toString() ?? '';
   final PageController _imageController = PageController();
   int _currentImage = 0;
   bool _isWishlisted = false;
@@ -28,7 +35,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final _wm = WishlistManager.instance;
 
   List<String> get _images {
-    final img = widget.product['image'] as String? ?? 'assets/images/e-book.jpeg';
+    final img =
+        widget.product['image'] as String? ?? 'assets/images/e-book.jpeg';
     return [img, img, img];
   }
 
@@ -37,10 +45,60 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.initState();
     _isWishlisted = _wm.isWishlisted(widget.product);
     _wm.addListener(_onWishlistChanged);
+    _loadReviews();
   }
 
   void _onWishlistChanged() {
     setState(() => _isWishlisted = _wm.isWishlisted(widget.product));
+  }
+
+  Future<void> _loadReviews() async {
+    if (_produkId.isEmpty) return;
+    setState(() => _isLoadingReviews = true);
+
+    try {
+      final data = await ReviewService().getReviewsByProduk(_produkId);
+      if (!mounted) return;
+      final summary = (data['summary'] as Map<String, dynamic>?) ?? {};
+      final reviewItems =
+          (data['reviews'] as List<dynamic>?)
+              ?.map((e) => ReviewModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+
+      setState(() {
+        _summary = {
+          'rata_rata': summary['rata_rata'] ?? 0,
+          'total': summary['total'] ?? reviewItems.length,
+        };
+        _reviews = reviewItems;
+        _isLoadingReviews = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingReviews = false);
+    }
+  }
+
+  Widget _buildRatingSummary() {
+    final average = _summary['rata_rata'] ?? 0;
+    final total = _summary['total'] ?? 0;
+
+    return Row(
+      children: [
+        Text(
+          '$average',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 6),
+        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          '($total ulasan)',
+          style: const TextStyle(fontSize: 12, color: Color(0xFF9098B1)),
+        ),
+      ],
+    );
   }
 
   @override
@@ -64,16 +122,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         children: [
           CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: _buildImageCarousel(),
-              ),
+              SliverToBoxAdapter(child: _buildImageCarousel()),
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.only(top: 16),
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,6 +166,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     ),
                                   ],
                                 ),
+                                if (((_summary['total'] as int?) ?? 0) > 0) ...[
+                                  const SizedBox(height: 8),
+                                  _buildRatingSummary(),
+                                ],
                               ],
                             ),
                           ),
@@ -210,7 +272,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       const SizedBox(height: 4),
                       GestureDetector(
                         onTap: () => setState(
-                          () => _isDescriptionExpanded = !_isDescriptionExpanded,
+                          () =>
+                              _isDescriptionExpanded = !_isDescriptionExpanded,
                         ),
                         child: Text(
                           _isDescriptionExpanded ? 'Show less' : 'Read more >',
@@ -308,7 +371,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  void _showAddedToCartNotification(BuildContext context, Map<String, dynamic> product) {
+  void _showAddedToCartNotification(
+    BuildContext context,
+    Map<String, dynamic> product,
+  ) {
     final added = CartManager.instance.addToCart(product);
 
     late OverlayEntry overlayEntry;
@@ -339,7 +405,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     color: Colors.black.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -348,11 +414,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: added ? const Color(0xFF6B7FD7) : Colors.orangeAccent,
+                      color: added
+                          ? const Color(0xFF6B7FD7)
+                          : Colors.orangeAccent,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      added ? Icons.shopping_cart_outlined : Icons.info_outline_rounded,
+                      added
+                          ? Icons.shopping_cart_outlined
+                          : Icons.info_outline_rounded,
                       color: Colors.white,
                       size: 32,
                     ),
@@ -390,91 +460,98 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildImageCarousel() {
-  return Container(
-    color: Colors.white,
-    child: Column(
-      children: [
-        SizedBox(
-          height: 300,
-          child: PageView.builder(
-            controller: _imageController,
-            itemCount: _images.length,
-            onPageChanged: (i) => setState(() => _currentImage = i),
-            itemBuilder: (context, index) {
-              final img = _images[index];
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  // ✅ Support URL dari API dan asset lokal
-                  child: img.startsWith('http')
-                      ? Image.network(
-                          img,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F2F8),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(Icons.image_rounded,
-                                color: Color(0xFFB0B8CC), size: 60),
-                          ),
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 300,
+            child: PageView.builder(
+              controller: _imageController,
+              itemCount: _images.length,
+              onPageChanged: (i) => setState(() => _currentImage = i),
+              itemBuilder: (context, index) {
+                final img = _images[index];
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    // ✅ Support URL dari API dan asset lokal
+                    child: img.startsWith('http')
+                        ? Image.network(
+                            img,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF0F2F8),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF6B7FD7),
-                                  strokeWidth: 2,
-                                ),
+                              child: const Icon(
+                                Icons.image_rounded,
+                                color: Color(0xFFB0B8CC),
+                                size: 60,
                               ),
-                            );
-                          },
-                        )
-                      : Image.asset(
-                          img,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F2F8),
-                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.image_rounded,
-                                color: Color(0xFFB0B8CC), size: 60),
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0F2F8),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF6B7FD7),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            img,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F2F8),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.image_rounded,
+                                color: Color(0xFFB0B8CC),
+                                size: 60,
+                              ),
+                            ),
                           ),
-                        ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_images.length, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _currentImage == i ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _currentImage == i
+                      ? const Color(0xFF6B7FD7)
+                      : const Color(0xFFD0D5E8),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               );
-            },
+            }),
           ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_images.length, (i) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _currentImage == i ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _currentImage == i
-                    ? const Color(0xFF6B7FD7)
-                    : const Color(0xFFD0D5E8),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 8),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSellerInfo(Map<String, dynamic> product) {
     return Row(
       children: [
@@ -487,11 +564,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               width: 52,
               height: 52,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.person,
-                color: Color(0xFF6B7FD7),
-                size: 30,
-              ),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 30),
             ),
           ),
         ),
@@ -511,15 +585,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.star_rounded,
-                      color: Color(0xFFFFB800), size: 14),
+                  const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFB800),
+                    size: 14,
+                  ),
                   const SizedBox(width: 4),
                   const Text(
                     '4.5  |  120 Product',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9098B1),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF9098B1)),
                   ),
                 ],
               ),
@@ -535,14 +609,23 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return Row(
       children: List.generate(5, (i) {
         if (i < rating.floor()) {
-          return const Icon(Icons.star_rounded,
-              color: Color(0xFFFFB800), size: 14);
+          return const Icon(
+            Icons.star_rounded,
+            color: Color(0xFFFFB800),
+            size: 14,
+          );
         } else if (i < rating) {
-          return const Icon(Icons.star_half_rounded,
-              color: Color(0xFFFFB800), size: 14);
+          return const Icon(
+            Icons.star_half_rounded,
+            color: Color(0xFFFFB800),
+            size: 14,
+          );
         } else {
-          return const Icon(Icons.star_outline_rounded,
-              color: Color(0xFFD0D5E8), size: 14);
+          return const Icon(
+            Icons.star_outline_rounded,
+            color: Color(0xFFD0D5E8),
+            size: 14,
+          );
         }
       }),
     );
