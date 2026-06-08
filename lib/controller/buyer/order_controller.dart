@@ -12,7 +12,6 @@ class OrderController extends ChangeNotifier {
   List<OrderItem> get historyOrders => _historyOrders;
   bool get isLoading => _isLoading;
 
-  // ── 1. AMBIL PESANAN AKTIF (Dibatasi Cuma Muncul Maksimal 2) ──
   Future<void> fetchCurrentOrders() async {
     _isLoading = true;
     notifyListeners();
@@ -20,16 +19,9 @@ class OrderController extends ChangeNotifier {
       final response = await ApiService.get('/pesanan');
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        
-        final List rawData = decoded is List 
-            ? decoded 
-            : (decoded['orders'] ?? decoded['data'] ?? []);
-
-        // Memetakan data dari Angga ke Model
+        final List rawData = decoded is List ? decoded : (decoded['orders'] ?? decoded['data'] ?? []);
         final List<OrderItem> allOrders = rawData.map((item) => OrderItem.fromJson(item)).toList();
-        
-        // ✅ KUNCI SAKTI: Cuma ambil maksimal 2 data teratas untuk pesanan aktif
-        _currentOrders = allOrders.take(2).toList();
+        _currentOrders = allOrders.take(2).toList(); // Batasi maksimal 2 sesuai request
       } else {
         _currentOrders = [];
       }
@@ -41,7 +33,6 @@ class OrderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── 2. AMBIL RIWAYAT PEMBELIAN (Tetap Muncul Semua) ──
   Future<void> fetchHistoryOrders() async {
     _isLoading = true;
     notifyListeners();
@@ -49,11 +40,7 @@ class OrderController extends ChangeNotifier {
       final response = await ApiService.get('/history/pembelian');
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        
-        final List rawData = decoded is List 
-            ? decoded 
-            : (decoded['orders'] ?? decoded['data'] ?? []);
-
+        final List rawData = decoded is List ? decoded : (decoded['orders'] ?? decoded['data'] ?? []);
         _historyOrders = rawData.map((item) => OrderItem.fromJson(item)).toList();
       } else {
         _historyOrders = [];
@@ -66,31 +53,37 @@ class OrderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── 3. SUBMIT RATING BARU ──
-  Future<void> submitRating(int orderId, int rating, String review) async {
+  // 🌟 PERBAIKAN SINKRONISASI TOTAL DENGAN BACKEND ANGGA
+  Future<bool> submitRating(String productId, int rating, String review, int orderId) async {
     try {
+      // Mengirimkan payload sesuai validasi store() Angga: produk_id, rating, komentar
       final response = await ApiService.postAuth('/review', {
-        'order_id': orderId, 
+        'produk_id': productId, 
         'rating': rating,
-        'review': review,
+        'komentar': review,
       });
       
+      debugPrint('Hasil Post Review [${response.statusCode}]: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Update data ulasan lokal agar UI langsung pindah seksi otomatis
         final index = _historyOrders.indexWhere((o) => o.id == orderId);
         if (index != -1) {
           _historyOrders[index] = _historyOrders[index].copyWith(rating: rating, reviewText: review);
           notifyListeners();
         }
+        return true;
       }
+      return false;
     } catch (e) {
-      debugPrint('Error submitting rating: $e');
+      debugPrint('Error submit ulasan: $e');
+      return false;
     }
   }
 
-  // ── 4. CHECKOUT ──
   Future<void> checkout(List<Map<String, dynamic>> items) async {
     try {
-      final response = await ApiService.postAuth('/checkout', {
+      final response = await ApiService.postAuth('/orders/checkout', {
         'items': items,
       });
       if (response.statusCode == 200 || response.statusCode == 201) {
