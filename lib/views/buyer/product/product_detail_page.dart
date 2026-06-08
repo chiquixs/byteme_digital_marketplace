@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import '../wishlist/wishlist_page.dart';
-import '../../../models/review_model.dart';
 import '../../../services/review_service.dart';
 import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
-// PRODUCT DETAIL PAGE - Digital Product Marketplace
+// PRODUCT DETAIL PAGE - No Dummy Seller Data Version
 // ============================================================
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
-  final bool isSellerView; // Tambahkan ini
+  final bool isSellerView; 
 
   const ProductDetailPage({
     super.key,
     required this.product,
-    this.isSellerView = false, // Default false (buyer)
+    this.isSellerView = false, 
   });
 
   @override
@@ -24,10 +23,10 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   Map<String, dynamic> _summary = {'rata_rata': 0, 'total': 0};
-  List<ReviewModel> _reviews = [];
+  List<dynamic> _reviews = []; 
   bool _isLoadingReviews = false;
 
-  String get _produkId => widget.product['id']?.toString() ?? '';
+  String get _produkId => widget.product['id']?.toString() ?? widget.product['produk_id']?.toString() ?? '';
   final PageController _imageController = PageController();
   int _currentImage = 0;
   bool _isWishlisted = false;
@@ -35,9 +34,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final _wm = WishlistManager.instance;
 
   List<String> get _images {
-    final img =
-        widget.product['image'] as String? ?? 'assets/images/e-book.jpeg';
-    return [img, img, img];
+    final img = widget.product['image'] ?? widget.product['file_path'] ?? 'assets/images/e-book.jpeg';
+    return [img.toString(), img.toString(), img.toString()];
   }
 
   @override
@@ -59,19 +57,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     try {
       final data = await ReviewService().getReviewsByProduk(_produkId);
       if (!mounted) return;
+      
       final summary = (data['summary'] as Map<String, dynamic>?) ?? {};
-      final reviewItems =
-          (data['reviews'] as List<dynamic>?)
-              ?.map((e) => ReviewModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final List<dynamic> reviewItems = (data['reviews'] as List<dynamic>?) ?? [];
 
       setState(() {
         _summary = {
-          'rata_rata': summary['rata_rata'] ?? 0,
-          'total': summary['total'] ?? reviewItems.length,
+          'rata_rata': summary['rata_rata'] ?? summary['reviews_avg_rating'] ?? 0,
+          'total': summary['total'] ?? summary['reviews_count'] ?? reviewItems.length,
         };
-        _reviews = reviewItems;
+        _reviews = reviewItems; 
         _isLoadingReviews = false;
       });
     } catch (e) {
@@ -80,23 +75,63 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
   }
 
-  Widget _buildRatingSummary() {
-    final average = _summary['rata_rata'] ?? 0;
-    final total = _summary['total'] ?? 0;
+  Widget _buildReviewsList() {
+    if (_isLoadingReviews) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
 
-    return Row(
+    if (_reviews.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          'Belum ada teks ulasan untuk produk ini.',
+          style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '$average',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(width: 6),
-        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-        const SizedBox(width: 8),
-        Text(
-          '($total ulasan)',
-          style: const TextStyle(fontSize: 12, color: Color(0xFF9098B1)),
-        ),
+        const SizedBox(height: 10),
+        ..._reviews.take(3).map((review) {
+          final Map<String, dynamic> r = review is Map ? Map<String, dynamic>.from(review) : {};
+          final String reviewerName = r['username'] ?? 'Pembeli ByteMe';
+          final int starCount = r['rating'] ?? 5;
+          final String commentText = r['komentar'] ?? '';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEEF0F7)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(reviewerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    Row(
+                      children: List.generate(5, (i) => Icon(
+                        i < starCount ? Icons.star_rounded : Icons.star_border_rounded,
+                        size: 12,
+                        color: i < starCount ? Colors.amber : Colors.grey.shade300,
+                      )),
+                    ),
+                  ],
+                ),
+                if (commentText.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(commentText, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                ],
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -111,13 +146,21 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
-    final String title = product['title'] ?? '';
-    final String priceLabel = product['priceLabel'] ?? product['price'] ?? '';
-    final String reviews = '${product['reviews'] ?? 0}';
+    final String title = product['title'] ?? product['nama_produk'] ?? '';
+    final String priceLabel = product['priceLabel'] ?? product['price']?.toString() ?? '';
+
+    final dynamic rawInitialRating = product['reviews_avg_rating'] ?? product['rating'] ?? 0.0;
+    final double initialRating = double.tryParse(rawInitialRating.toString()) ?? 0.0;
+    final dynamic rawLiveRating = _summary['rata_rata'];
+    final double currentRating = (rawLiveRating != null && rawLiveRating != 0)
+        ? (double.tryParse(rawLiveRating.toString()) ?? initialRating)
+        : initialRating;
+    final int currentTotalReviews = (_summary['total'] != null && _summary['total'] > 0)
+        ? _summary['total']
+        : (product['reviews_count'] ?? product['reviews'] ?? 0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F8),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           CustomScrollView(
@@ -125,170 +168,75 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               SliverToBoxAdapter(child: _buildImageCarousel()),
               SliverToBoxAdapter(
                 child: Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
-                  ),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 1. JUDUL & HARGA
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1A1D2E),
-                                    height: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    _buildStarRating(rating),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '$rating  •  $reviews Terjual',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF9098B1),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (((_summary['total'] as int?) ?? 0) > 0) ...[
-                                  const SizedBox(height: 8),
-                                  _buildRatingSummary(),
-                                ],
-                              ],
-                            ),
+                            child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Text(
-                            priceLabel,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1A1D2E),
-                            ),
+                            priceLabel.startsWith('Rp') ? priceLabel : 'Rp $priceLabel',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF6B7FD7)),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      
+                      // 2. RATINGS ROW
+                      Row(
+                        children: [
+                          _buildStarRating(currentRating),
+                          const SizedBox(width: 8),
+                          Text('$currentRating ($currentTotalReviews Ulasan)', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        ],
+                      ),
+
                       const SizedBox(height: 20),
-                      const Divider(color: Color(0xFFF0F2F8), thickness: 1),
-                      const SizedBox(height: 16),
+                      const Divider(thickness: 1),
+
+                      // 3. SEKSI ULASAN PEMBELI 
+                      const Text('Ulasan Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      _buildReviewsList(),
+
+                      const SizedBox(height: 20),
+                      const Divider(thickness: 1),
+
+                      // 4. DESKRIPSI PRODUK
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Description',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1D2E),
-                            ),
-                          ),
-                          // Wishlist button - HANYA UNTUK BUYER
+                          const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           if (!widget.isSellerView)
-                            GestureDetector(
-                              onTap: () {
-                                _wm.toggle(widget.product);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      _isWishlisted
-                                          ? '$title added to wishlist!'
-                                          : '$title removed from wishlist',
-                                    ),
-                                    duration: const Duration(seconds: 2),
-                                    backgroundColor: _isWishlisted
-                                        ? const Color(0xFFFF4D67)
-                                        : const Color(0xFF9098B1),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: _isWishlisted
-                                      ? const Color(0xFFFF4D67).withOpacity(0.1)
-                                      : const Color(0xFFF0F2F8),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isWishlisted
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  color: _isWishlisted
-                                      ? const Color(0xFFFF4D67)
-                                      : const Color(0xFFB0B8CC),
-                                  size: 22,
-                                ),
-                              ),
+                            IconButton(
+                              icon: Icon(_isWishlisted ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                              onPressed: () => _wm.toggle(product),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      AnimatedCrossFade(
-                        duration: const Duration(milliseconds: 250),
-                        crossFadeState: _isDescriptionExpanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
-                        firstChild: Text(
-                          _dummyDescription,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6B7380),
-                            height: 1.6,
-                          ),
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        secondChild: Text(
-                          _dummyDescription,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6B7380),
-                            height: 1.6,
-                          ),
-                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        product['deskripsi'] ?? product['description'] ?? _dummyDescription,
+                        style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                        maxLines: _isDescriptionExpanded ? null : 3,
                       ),
-                      const SizedBox(height: 4),
                       GestureDetector(
-                        onTap: () => setState(
-                          () =>
-                              _isDescriptionExpanded = !_isDescriptionExpanded,
-                        ),
-                        child: Text(
-                          _isDescriptionExpanded ? 'Show less' : 'Read more >',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF6B7FD7),
-                          ),
-                        ),
+                        onTap: () => setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
+                        child: Text(_isDescriptionExpanded ? 'Show less' : 'Read more >', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
+
                       const SizedBox(height: 20),
-                      const Divider(color: Color(0xFFF0F2F8), thickness: 1),
-                      const SizedBox(height: 16),
+                      const Divider(thickness: 1),
+
+                      // 5. SEKSI SELLER (SUDAH FIX DINAMIS ASLI DATABASE)
                       _buildSellerInfo(product),
-                      const SizedBox(height: 100),
+                      
+                      const SizedBox(height: 120), 
                     ],
                   ),
                 ),
@@ -296,73 +244,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ],
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
+            top: 40,
             left: 16,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.10),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 18,
-                  color: Color(0xFF1A1D2E),
-                ),
-              ),
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
             ),
           ),
-          // ADD TO CART BUTTON - HANYA UNTUK BUYER
           if (!widget.isSellerView)
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
               child: Container(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  12,
-                  20,
-                  MediaQuery.of(context).padding.bottom + 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.07),
-                      blurRadius: 16,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.all(20),
+                color: Colors.white,
                 child: ElevatedButton(
-                  onPressed: () {
-                    _showAddedToCartNotification(context, widget.product);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6B7FD7),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  child: const Text('Add to Cart'),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FD7), padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  onPressed: () => _showAddedToCartNotification(context, product),
+                  child: const Text('Add to Cart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
             ),
@@ -371,270 +271,85 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  void _showAddedToCartNotification(
-    BuildContext context,
-    Map<String, dynamic> product,
-  ) {
-    final added = CartManager.instance.addToCart(product);
-
-    late OverlayEntry overlayEntry;
-    overlayEntry = OverlayEntry(
-      builder: (context) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: TweenAnimationBuilder(
-            duration: const Duration(milliseconds: 300),
-            tween: Tween<double>(begin: 0.0, end: 1.0),
-            builder: (context, double value, child) {
-              return Opacity(
-                opacity: value,
-                child: Transform.scale(
-                  scale: 0.9 + (0.1 * value),
-                  child: child,
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              margin: const EdgeInsets.symmetric(horizontal: 50),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1D2E).withOpacity(0.9),
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: added
-                          ? const Color(0xFF6B7FD7)
-                          : Colors.orangeAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      added
-                          ? Icons.shopping_cart_outlined
-                          : Icons.info_outline_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    added ? "Added to Cart!" : "Already in Cart",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    product['title'],
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(overlayEntry);
-    Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
+  void _showAddedToCartNotification(BuildContext context, Map<String, dynamic> product) {
+    CartManager.instance.addToCart(product);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Cart!'), behavior: SnackBarBehavior.floating));
   }
 
   Widget _buildImageCarousel() {
     return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          SizedBox(
-            height: 300,
-            child: PageView.builder(
-              controller: _imageController,
-              itemCount: _images.length,
-              onPageChanged: (i) => setState(() => _currentImage = i),
-              itemBuilder: (context, index) {
-                final img = _images[index];
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    // ✅ Support URL dari API dan asset lokal
-                    child: img.startsWith('http')
-                        ? Image.network(
-                            img,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F2F8),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.image_rounded,
-                                color: Color(0xFFB0B8CC),
-                                size: 60,
-                              ),
-                            ),
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF0F2F8),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF6B7FD7),
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : Image.asset(
-                            img,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F2F8),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.image_rounded,
-                                color: Color(0xFFB0B8CC),
-                                size: 60,
-                              ),
-                            ),
-                          ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_images.length, (i) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentImage == i ? 20 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentImage == i
-                      ? const Color(0xFF6B7FD7)
-                      : const Color(0xFFD0D5E8),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 8),
-        ],
+      height: 250,
+      width: double.infinity,
+      child: PageView.builder(
+        itemCount: _images.length,
+        onPageChanged: (i) => setState(() => _currentImage = i),
+        itemBuilder: (context, index) {
+          final img = _images[index];
+          return img.startsWith('http') 
+            ? Image.network(img, fit: BoxFit.cover) 
+            : Image.asset(img, fit: BoxFit.cover);
+        },
       ),
     );
   }
 
+  // ── 🌟 WIDGET SELLER DINAMIS TANPA DATA JEFRI NICHOL 🌟 ──
   Widget _buildSellerInfo(Map<String, dynamic> product) {
+    final dynamic userObj = product['user'];
+    
+    // Logika Sapu Jagat menyaring nama seller asli dari database Supabase kelompok kalian
+    final String sellerName = userObj is Map 
+        ? (userObj['username'] ?? userObj['name'] ?? 'Penjual ByteMe')
+        : (product['seller_name'] ?? product['username'] ?? product['store_name'] ?? product['nama_toko'] ?? 'Penjual ByteMe');
+    
+    final String sellerAvatar = userObj is Map
+        ? (userObj['profile_image'] ?? userObj['avatar'] ?? '').toString()
+        : (product['seller_avatar'] ?? product['avatar'] ?? '').toString();
+
     return Row(
       children: [
         CircleAvatar(
-          radius: 26,
-          backgroundColor: const Color(0xFFD0D5E8),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/profile.jpeg',
-              width: 52,
-              height: 52,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 30),
-            ),
-          ),
+          radius: 25, 
+          backgroundColor: const Color(0xFFF0F2F8),
+          backgroundImage: sellerAvatar.isNotEmpty && sellerAvatar.startsWith('http')
+              ? NetworkImage(sellerAvatar) as ImageProvider
+              : null,
+          child: sellerAvatar.isEmpty || !sellerAvatar.startsWith('http')
+              ? const Icon(Icons.storefront_rounded, color: Color(0xFF6B7FD7), size: 24)
+              : null,
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 15),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Jefri Nichol',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1D2E),
-                ),
+              Text(
+                sellerName, 
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1A1D2E))
               ),
               const SizedBox(height: 4),
-              Row(
+              const Row(
                 children: [
-                  const Icon(
-                    Icons.star_rounded,
-                    color: Color(0xFFFFB800),
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    '4.5  |  120 Product',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF9098B1)),
-                  ),
+                  Icon(Icons.verified_user_rounded, color: Color(0xFF6B7FD7), size: 14),
+                  SizedBox(width: 4),
+                  Text('Official Seller', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
             ],
           ),
         ),
-        // TOMBOL VISIT DIHAPUS SESUAI PERMINTAAN
       ],
     );
   }
 
   Widget _buildStarRating(double rating) {
     return Row(
-      children: List.generate(5, (i) {
-        if (i < rating.floor()) {
-          return const Icon(
-            Icons.star_rounded,
-            color: Color(0xFFFFB800),
-            size: 14,
-          );
-        } else if (i < rating) {
-          return const Icon(
-            Icons.star_half_rounded,
-            color: Color(0xFFFFB800),
-            size: 14,
-          );
-        } else {
-          return const Icon(
-            Icons.star_outline_rounded,
-            color: Color(0xFFD0D5E8),
-            size: 14,
-          );
-        }
-      }),
+      children: List.generate(5, (i) => Icon(
+        i < rating.floor() ? Icons.star_rounded : Icons.star_border_rounded,
+        size: 16, color: Colors.amber,
+      )),
     );
   }
 
-  static const String _dummyDescription =
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec vitae '
-      'mauris ipsum. Donec suscipit nunc ut velit imperdiet, in suscipit ipsum '
-      'posuere. Fusce quis sapien et mi mattis consequat. Ut ut dictum sem. '
-      'Sed vestibulum nibh sapien, a ultricies nibh lobortis non. Integer lobortis '
-      'luctus ligula, ut maximus lorem molestie rhoncus. Donec vitae tristique.';
+  static const String _dummyDescription = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec vitae.';
 }
