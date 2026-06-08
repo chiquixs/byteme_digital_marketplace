@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
-import '../checkout/checkout_page.dart';
 import 'package:provider/provider.dart';
-import '../../../controller/buyer/cart_controller.dart'; // ✅ fix import
+import 'package:url_launcher/url_launcher.dart'; 
+import '../../../controller/buyer/cart_controller.dart';
+import '../../../../services/checkout_service.dart'; 
+import '../../../../controller/buyer/order_controller.dart'; 
 
 class CartPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -159,7 +161,6 @@ class _CartPageState extends State<CartPage> {
   Widget build(BuildContext context) {
     final keranjangController = context.watch<KeranjangController>();
 
-    // Sync dari controller, pertahankan status selected
     final Map<String, bool> prevSelected = {
       for (final item in cartItems)
         (item['name'] as String? ?? ''): item['selected'] as bool? ?? false,
@@ -436,7 +437,6 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  // ✅ Pakai index bukan item['id'] untuk hindari null error
   Widget _buildImagePlaceholder(int index) {
     const colors = [
       Color(0xFFBBCBF5),
@@ -513,7 +513,7 @@ class _CartPageState extends State<CartPage> {
                       borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                onPressed: () {
+                onPressed: () async { 
                   final selectedItems = cartItems
                       .where((item) => item['selected'] == true)
                       .toList();
@@ -527,12 +527,78 @@ class _CartPageState extends State<CartPage> {
                         backgroundColor: Colors.redAccent,
                       ),
                     );
+                    return;
+                  }
+
+                  
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF5A72C6)),
+                    ),
+                  );
+
+                  final ids = selectedItems
+                      .map((item) => item['detail_keranjang_id'] as String?)
+                      .whereType<String>()
+                      .toList();
+
+                  if (ids.isEmpty) {
+                    Navigator.pop(context); 
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Item tidak valid. Silakan coba lagi.'),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Direct API execution
+                  final result = await CheckoutService.checkout(detailKeranjangIds: ids);
+                  
+                  if (!mounted) return;
+                  Navigator.pop(context); // Close loading dialog
+
+                  if (!result.success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result.message),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Fetch updated current orders via OrderController
+                  context.read<OrderController>().fetchCurrentOrders();
+
+                  //  Open Midtrans checkout URL using url_launcher
+                  final url = result.redirectUrl;
+                  if (url != null && await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                    
+                    if (mounted) {
+                      // Navigate automatically back to the home screen
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Selesaikan pembayaran di browser. Email akses produk akan dikirim setelah pembayaran dikonfirmasi.'),
+                          duration: Duration(seconds: 6),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
                   } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            CheckoutPage(selectedItems: selectedItems),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Tidak dapat membuka halaman pembayaran: $url'),
+                        backgroundColor: Colors.redAccent,
+                        behavior: SnackBarBehavior.floating,
                       ),
                     );
                   }
