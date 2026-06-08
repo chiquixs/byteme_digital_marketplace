@@ -51,12 +51,8 @@ class UserController extends ChangeNotifier {
     _displayName     = user.username;
     _profileImageUrl = user.profileImage; // ← TAMBAH
 
-    // Ambil data balance secara dinamis dari user model buatan Lovie
-    try {
-      _balance = (user as dynamic).balance?.toDouble() ?? 0.0;
-    } catch (_) {
-      _balance = 0.0;
-    }
+    // KODE YANG DIPERBAIKI: Langsung ambil tanpa try-catch dan dynamic
+    _balance = user.balance ?? 0.0;
 
     await prefs.setString('user_username', user.username);
     await prefs.setString('user_email', user.email);
@@ -87,8 +83,8 @@ class UserController extends ChangeNotifier {
     _role             = 'Buyer';
     _displayName      = '';
     _profileImagePath = null;
-    _profileImageUrl  = null; // 
-    _balance          = 0.0; //
+    _profileImageUrl  = null; 
+    _balance          = 0.0; 
     _pendingOrders    = [];
 
     notifyListeners();
