@@ -20,14 +20,28 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    // 💡 LOGIKA SAPU JAGAT: Deteksi penamaan ID pesanan/detail dari database Angga
+    final dynamic rawId = json['id'] ?? json['pesanan_id'] ?? json['detail_id'] ?? 0;
+    
+    // 💡 LOGIKA SAPU JAGAT: Deteksi penamaan rating/bintang dari database Angga
+    final dynamic rawRating = json['rating'] ?? json['bintang'] ?? json['skor'];
+
     return OrderItem(
-      id: json['id'] ?? 0,
-      storeName: json['store_name'] ?? '',
-      productName: json['product_name'] ?? '',
-      reviewText: json['review_text'],
-      rating: json['rating'],
-      imagePath: json['image_path'] ?? '',
-      quantity: json['quantity'] ?? 1,
+      id: rawId is num ? rawId.toInt() : (int.tryParse(rawId.toString()) ?? 0),
+      
+      storeName: json['store_name'] ?? json['nama_toko'] ?? json['username_seller'] ?? json['username'] ?? '',
+      
+      // Deteksi nama produk versi database Angga (nama_produk)
+      productName: json['product_name'] ?? json['nama_produk'] ?? '',
+      
+      reviewText: json['review_text'] ?? json['ulasan'] ?? json['deskripsi_review'],
+      
+      rating: rawRating is num ? rawRating.toInt() : (int.tryParse(rawRating.toString())),
+      
+      // Deteksi alamat path file gambar produk dari database Angga (file_path atau image)
+      imagePath: json['image_path'] ?? json['file_path'] ?? json['image'] ?? '',
+      
+      quantity: json['quantity'] ?? json['qty'] ?? json['qty_terjual'] ?? 1,
     );
   }
 

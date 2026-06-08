@@ -29,28 +29,21 @@ class SellerProductPage extends StatefulWidget {
 }
 
 class _SellerProductPageState extends State<SellerProductPage> {
-  // ── WARNA UTAMA (sama dengan seller/home/home_page.dart) ──
+  // ── WARNA UTAMA ──
   static const Color _accentColor = Color(0xFF3D4270);
   static const Color _primaryBlue = Color(0xFF6B7FD7);
   static const Color _bgColor = Color(0xFFE8E8F0);
 
   // ── SEARCH ──
-  // Meniru pola _searchController di explore_page.dart
   final TextEditingController _searchController = TextEditingController();
-
-  // _filteredProducts dihitung dari data controller, bukan disimpan lokal
   List<Map<String, dynamic>> _filteredProducts = [];
 
-  // ──────────────────────────────────────────
-  // LIFECYCLE
-  // Meniru pola initState & dispose di explore_page.dart
-  // ──────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_applyFilter);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ Fetch hanya produk milik seller yang login
+      // Fetch produk milik seller aktif
       context.read<ProductController>().fetchMyProducts();
       _applyFilter();
     });
@@ -63,109 +56,88 @@ class _SellerProductPageState extends State<SellerProductPage> {
     super.dispose();
   }
 
-  // ──────────────────────────────────────────
-  // FILTER LOGIC — hanya berdasarkan search query (filter tab dihapus)
-  // Meniru pola _applyFilter di explore_page.dart
-  // ──────────────────────────────────────────
   void _applyFilter() {
     final allProducts = context.read<ProductController>().products;
     final query = _searchController.text.toLowerCase();
 
     setState(() {
       _filteredProducts = allProducts.where((p) {
-        return (p['title'] as String).toLowerCase().contains(query);
+        final title = (p['title'] ?? p['nama_produk'] ?? '').toString().toLowerCase();
+        return title.contains(query);
       }).toList();
     });
   }
 
-  void _showComingSoonSnackbar(String page) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('The $page page has not been created yet'),
-        backgroundColor: _primaryBlue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProductController>(
+      builder: (context, productController, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _applyFilter();
+        });
+
+        return Scaffold(
+          backgroundColor: _bgColor,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildSearchBar(),
+
+                // ── LIST PRODUK ──
+                Expanded(
+                  child: productController.isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF6B7FD7),
+                          ),
+                        )
+                      : _filteredProducts.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                              itemCount: _filteredProducts.length,
+                              itemBuilder: (context, index) {
+                                return _buildProductCard(
+                                  _filteredProducts[index],
+                                  productController,
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── TOMBOL TAMBAH PRODUK ──
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddProductPage(),
+                ),
+              );
+            },
+            backgroundColor: _primaryBlue,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text(
+              'Add New Product',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        );
+      },
     );
   }
 
-  // ──────────────────────────────────────────
-  // BUILD
-  // ──────────────────────────────────────────
-  @override
-Widget build(BuildContext context) {
-  return Consumer<ProductController>(
-    builder: (context, productController, child) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _applyFilter();
-      });
-
-      return Scaffold(
-        backgroundColor: _bgColor,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-
-              // ── LIST PRODUK ──
-              Expanded(
-                child: productController.isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF6B7FD7),
-                        ),
-                      )
-                    : _filteredProducts.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                            itemCount: _filteredProducts.length,
-                            itemBuilder: (context, index) {
-                              return _buildProductCard(
-                                _filteredProducts[index],
-                                productController,
-                              );
-                            },
-                          ),
-              ),
-            ],
-          ),
-        ),
-
-        // ── TOMBOL TAMBAH PRODUK ──
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AddProductPage(),
-              ),
-            );
-          },
-          backgroundColor: _primaryBlue,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text(
-            'Add New Product',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-
-        floatingActionButtonLocation:
-            FloatingActionButtonLocation.centerFloat,
-      );
-    },
-  );
-}
-
   // ----------------------------------------------------------
   // HEADER
-  // Meniru pola _buildHeader di versi sebelumnya
   // ----------------------------------------------------------
   Widget _buildHeader() {
     return Padding(
@@ -200,7 +172,6 @@ Widget build(BuildContext context) {
             ),
           ),
           const Spacer(),
-          // Badge jumlah produk
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -223,7 +194,6 @@ Widget build(BuildContext context) {
 
   // ----------------------------------------------------------
   // SEARCH BAR
-  // Meniru pola _buildSearchBar di explore_page.dart
   // ----------------------------------------------------------
   Widget _buildSearchBar() {
     return Padding(
@@ -283,13 +253,29 @@ Widget build(BuildContext context) {
   }
 
   // ----------------------------------------------------------
-  // PRODUCT CARD
-  // Badge status & toggle dihapus, titik tiga hanya Edit & Delete
+  // PRODUCT CARD (FIX LOGIKA SALES DENGAN DATA BACKEND ANGGA)
   // ----------------------------------------------------------
   Widget _buildProductCard(
     Map<String, dynamic> product,
     ProductController controller,
   ) {
+    // ✅ KODE SAPU JAGAT: Mengecek kecocokan key penamaan jumlah penjualan dari backend Angga
+    final dynamic rawSales = product['qty_terjual'] ??
+                             product['total_terjual'] ?? 
+                             product['terjual'] ?? 
+                             product['sold'] ?? 
+                             product['qty_sold'] ?? 
+                             product['sales'] ?? 0;
+    
+    int salesCount = 0;
+    if (rawSales is num) {
+      salesCount = rawSales.toInt();
+    } else {
+      // Mengantisipasi jika format data terkirim sebagai teks String
+      String cleanSales = rawSales.toString().replaceAll(RegExp(r'[^0-9]'), '');
+      salesCount = int.tryParse(cleanSales) ?? 0;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
@@ -307,26 +293,23 @@ Widget build(BuildContext context) {
       child: Row(
         children: [
           // ── GAMBAR PRODUK ──
-          // Meniru pola Image.asset + errorBuilder di buyer/home/home_page.dart
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: SizedBox(
               width: 80,
               height: 80,
-              child:
-                  product['image'] != null &&
-                      (product['image'] as String).isNotEmpty
+              child: product['image'] != null && (product['image'] as String).isNotEmpty
                   ? (product['image'] as String).startsWith('http')
-                        ? Image.network(
-                            product['image'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                          )
-                        : Image.asset(
-                            product['image'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                          )
+                      ? Image.network(
+                          product['image'] as String,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                        )
+                      : Image.asset(
+                          product['image'] as String,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                        )
                   : _imagePlaceholder(),
             ),
           ),
@@ -338,7 +321,7 @@ Widget build(BuildContext context) {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product['title'],
+                  product['title'] ?? product['nama_produk'] ?? '-',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -349,7 +332,7 @@ Widget build(BuildContext context) {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  product['price'],
+                  product['price'] ?? 'Rp 0',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -357,18 +340,21 @@ Widget build(BuildContext context) {
                   ),
                 ),
                 const SizedBox(height: 4),
+                
+                // ✅ SUDAH DINAMIS: Menampilkan data sales berdasarkan rekam jejak kuantitas penjualan
                 Text(
-                  product['sales'],
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  '$salesCount sales',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 6),
+                
                 // Rating bintang
                 Row(
                   children: [
-                    _buildStarRating(product['rating']),
+                    _buildStarRating((product['rating'] as num?)?.toDouble() ?? 0.0),
                     const SizedBox(width: 4),
                     Text(
-                      '${product['rating']}',
+                      '${product['rating'] ?? 0.0}',
                       style: const TextStyle(
                         fontSize: 11,
                         color: Color(0xFF9098B1),
@@ -380,7 +366,7 @@ Widget build(BuildContext context) {
             ),
           ),
 
-          // ── KANAN: hanya tombol titik tiga (badge status & toggle dihapus) ──
+          // ── KANAN: Tombol Titik Tiga ──
           GestureDetector(
             onTap: () => _showProductOptions(context, product, controller),
             child: Padding(
@@ -399,7 +385,6 @@ Widget build(BuildContext context) {
 
   // ----------------------------------------------------------
   // EMPTY STATE
-  // Meniru pola _buildEmptyState di explore_page.dart
   // ----------------------------------------------------------
   Widget _buildEmptyState() {
     return Center(
@@ -439,7 +424,6 @@ Widget build(BuildContext context) {
 
   // ----------------------------------------------------------
   // STAR RATING
-  // Meniru pola _buildStarRating di buyer/home/home_page.dart
   // ----------------------------------------------------------
   Widget _buildStarRating(double rating) {
     return Row(
@@ -464,8 +448,7 @@ Widget build(BuildContext context) {
   }
 
   // ----------------------------------------------------------
-  // POPUP TITIK TIGA — hanya Edit & Delete (toggle status dihapus)
-  // Meniru pola showModalBottomSheet di versi sebelumnya
+  // POPUP TITIK TIGA
   // ----------------------------------------------------------
   void _showProductOptions(
     BuildContext context,
@@ -485,7 +468,6 @@ Widget build(BuildContext context) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -496,7 +478,7 @@ Widget build(BuildContext context) {
             ),
             const SizedBox(height: 20),
             Text(
-              product['title'],
+              product['title'] ?? product['nama_produk'] ?? 'Product',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -505,14 +487,12 @@ Widget build(BuildContext context) {
             ),
             const SizedBox(height: 20),
 
-            // ── Edit Product → navigasi ke EditProductPage ──
             _buildOptionButton(
               icon: Icons.edit_rounded,
               label: 'Edit Product',
               color: _primaryBlue,
               onTap: () {
-                Navigator.pop(context); // tutup bottom sheet dulu
-                // Meniru pola Navigator.push di seller/home/home_page.dart
+                Navigator.pop(context); 
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -523,7 +503,6 @@ Widget build(BuildContext context) {
             ),
             const SizedBox(height: 10),
 
-            // ── Delete Product ──
             _buildOptionButton(
               icon: Icons.delete_outline_rounded,
               label: 'Delete Product',
@@ -539,7 +518,6 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ── Dialog konfirmasi hapus ──
   void _showDeleteConfirmation(
     BuildContext context,
     Map<String, dynamic> product,
@@ -554,7 +532,7 @@ Widget build(BuildContext context) {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Product "${product['title']}" will be permanently removed.',
+          'Product "${product['title'] ?? product['nama_produk']}" will be permanently removed.',
           style: const TextStyle(color: Color(0xFF9098B1)),
         ),
         actions: [
@@ -568,10 +546,10 @@ Widget build(BuildContext context) {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              controller.deleteProduct(product['id'] as String);
+              controller.deleteProduct((product['id'] ?? '').toString());
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${product['title']} deleted'),
+                  content: Text('${product['title'] ?? product['nama_produk']} deleted'),
                   backgroundColor: Colors.red,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
@@ -605,8 +583,6 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ── Helper tombol opsi bottom sheet ──
-  // Meniru pola _buildOptionButton di versi sebelumnya
   Widget _buildOptionButton({
     required IconData icon,
     required String label,
