@@ -1,0 +1,918 @@
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:byteme_digital_marketplace/controller/user_controller.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/product_controller.dart';
+import '../cart/cart_page.dart';
+import '../profile/profile_page.dart';
+import '../eksplore/eksplore_page.dart';
+import '../product/product_detail_page.dart';
+import '../wishlist/wishlist_page.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/cart_controller.dart';
+
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
+
+  void _switchTab(int index) {
+    setState(() => _currentIndex = index);
+  }
+
+  List<Widget> get _pages => [
+    HomeContent(onNavigateToExplore: () => _switchTab(1)),
+    const ExplorePage(),
+    CartPage(onBack: () => _switchTab(0)),
+    const ProfilePage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F2F8),
+      body: _pages[_currentIndex],
+      bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_rounded, 'Home'),
+              _buildNavItem(1, Icons.explore_rounded, 'Explore'),
+              _buildNavItem(2, Icons.shopping_bag_rounded, 'Cart'),
+              _buildNavItem(3, Icons.person_rounded, 'Profile'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final bool isSelected = _currentIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF6B7FD7).withOpacity(0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                color: isSelected
+                    ? const Color(0xFF6B7FD7)
+                    : const Color(0xFFB0B8CC),
+                size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected
+                    ? const Color(0xFF6B7FD7)
+                    : const Color(0xFFB0B8CC),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// HOME CONTENT
+// ============================================================
+class HomeContent extends StatefulWidget {
+  final VoidCallback? onNavigateToExplore;
+  const HomeContent({super.key, this.onNavigateToExplore});
+
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  final PageController _bannerController = PageController();
+  int _currentBanner = 0;
+  Timer? _bannerTimer;
+
+  // ── FALLBACK BANNER (tampil kalau API belum return data) ──
+  static const List<Map<String, dynamic>> _fallbackBanners = [
+    {
+      'title': 'Get 30% off on UI Kits',
+      'subtitle': 'Limited time offer',
+      'gradient': [Color(0xFF7C8FE0), Color(0xFF9FB3F5)],
+      'icon': Icons.dashboard_customize_rounded,
+    },
+    {
+      'title': 'E-Book Terlaris Minggu Ini',
+      'subtitle': 'Ratusan judul tersedia',
+      'gradient': [Color(0xFF5E9EF5), Color(0xFF8FC3F9)],
+      'icon': Icons.menu_book_rounded,
+    },
+    {
+      'title': 'Canva Template Premium',
+      'subtitle': 'Mulai dari Rp 25.000',
+      'gradient': [Color(0xFFB07FD7), Color(0xFFD4A8F5)],
+      'icon': Icons.auto_awesome_rounded,
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startBannerTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductController>().fetchAllData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerTimer?.cancel();
+    _bannerController.dispose();
+    super.dispose();
+  }
+
+  void _startBannerTimer() {
+    _bannerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      // Pakai fallback banners untuk hitung jumlah slide
+      final count = _fallbackBanners.length;
+      final next = (_currentBanner + 1) % count;
+      _bannerController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<UserController, ProductController>(
+      builder: (context, userController, productController, child) {
+        // Pakai data dari API, fallback ke statis kalau kosong
+        final banners = productController.banners.isNotEmpty
+            ? productController.banners
+            : _fallbackBanners;
+        final mostPurchased = productController.mostPurchased;
+        final mostSearched = productController.mostSearched;
+        final isLoading = productController.isLoading;
+
+        return SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              // ── HEADER ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: _buildHeader(userController),
+                ),
+              ),
+
+              // ── BANNER AUTO-SCROLL ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: _buildAutoBanner(banners),
+                ),
+              ),
+
+              // ── SECTION: PALING BANYAK DIBELI ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                  child: _buildSectionHeader(
+                    'Most Frequently Purchased 🔥',
+                    onMore: widget.onNavigateToExplore,
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: isLoading
+                    ? const SizedBox(
+                        height: 240,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF6B7FD7),
+                          ),
+                        ),
+                      )
+                    : mostPurchased.isEmpty
+                        ? _buildEmptyState('Belum ada produk terlaris saat ini')
+                        : SizedBox(
+                            height: 240,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: mostPurchased.length,
+                              itemBuilder: (context, index) =>
+                                  _buildHorizontalProductCard(
+                                      mostPurchased[index], context),
+                            ),
+                          ),
+              ),
+
+              // ── SECTION: PALING BANYAK DICARI ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                  child: _buildSectionHeader(
+                    'Most Searched 🔍',
+                    onMore: widget.onNavigateToExplore,
+                  ),
+                ),
+              ),
+
+              if (isLoading)
+                const SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF6B7FD7),
+                      ),
+                    ),
+                  ),
+                )
+              else if (mostSearched.isEmpty)
+                SliverToBoxAdapter(child: _buildEmptyState('Belum ada produk yang dicari'))
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverGrid(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          _buildGridProductCard(mostSearched[index], context),
+                      childCount: mostSearched.length,
+                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.60,
+                    ),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ----------------------------------------------------------
+  // EMPTY STATE
+  // ----------------------------------------------------------
+  Widget _buildEmptyState(String message) {
+    return Container(
+      height: 160,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_rounded, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade400,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // HEADER
+  // ----------------------------------------------------------
+  Widget _buildHeader(UserController userController) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: const Color(0xFFD0D5E8),
+          child: ClipOval(
+            child: userController.profileImagePath != null
+                ? Image.file(
+                    File(userController.profileImagePath!),
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Color(0xFF6B7FD7),
+                      size: 28,
+                    ),
+                  )
+                : userController.profileImageUrl != null
+                    ? Image.network(
+                        userController.profileImageUrl!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person,
+                          color: Color(0xFF6B7FD7),
+                          size: 28,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: Color(0xFF6B7FD7),
+                        size: 28,
+                      ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Hi, ${userController.username.split(' ').first}! ',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1D2E),
+                  ),
+                ),
+                const Text('🧡', style: TextStyle(fontSize: 18)),
+              ],
+            ),
+            const Text(
+              'Lagi cari apa?',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF9098B1),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WishlistPage()),
+          ),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.favorite,
+                color: Color(0xFFFF4D67), size: 22),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // AUTO-SCROLL BANNER
+  // ----------------------------------------------------------
+  Widget _buildAutoBanner(List<Map<String, dynamic>> banners) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _bannerController,
+            itemCount: banners.length,
+            onPageChanged: (index) {
+              setState(() => _currentBanner = index);
+            },
+            itemBuilder: (context, index) {
+              final banner = banners[index];
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: List<Color>.from(banner['gradient']),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            banner['title'],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            banner['subtitle'],
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF6B7FD7),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              textStyle: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            child: const Text('Shop Now'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      banner['icon'],
+                      color: Colors.white.withOpacity(0.3),
+                      size: 80,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(banners.length, (index) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: _currentBanner == index ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _currentBanner == index
+                    ? const Color(0xFF6B7FD7)
+                    : const Color(0xFFD0D5E8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // SECTION HEADER
+  // ----------------------------------------------------------
+  Widget _buildSectionHeader(String title, {VoidCallback? onMore}) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A1D2E),
+          ),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: onMore,
+          child: const Row(
+            children: [
+              Text('more',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6B7FD7),
+                      fontWeight: FontWeight.w500)),
+              SizedBox(width: 2),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 11, color: Color(0xFF6B7FD7)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // HORIZONTAL PRODUCT CARD
+  // ----------------------------------------------------------
+  Widget _buildHorizontalProductCard(
+      Map<String, dynamic> product, BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
+      child: Container(
+        width: 155,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: _buildProductImage(product),
+                    ),
+                  ),
+                  if (product['badge'] != null)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1D2E).withOpacity(0.75),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(product['badge'],
+                            style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product['category'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF9098B1))),
+                  const SizedBox(height: 2),
+                  Text(product['title'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1D2E)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _buildStarRating(
+                          (product['rating'] as num?)?.toDouble() ?? 0.0),
+                      const SizedBox(width: 4),
+                      Text('${product['reviews'] ?? 0}',
+                          style: const TextStyle(
+                              fontSize: 10, color: Color(0xFF9098B1))),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(product['price'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1D2E))),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _showAddedToCart(context, product),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B7FD7),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        textStyle: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Add to Cart'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // GRID PRODUCT CARD
+  // ----------------------------------------------------------
+  Widget _buildGridProductCard(
+      Map<String, dynamic> product, BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: SizedBox(
+                    width: double.infinity,
+                    child: _buildProductImage(product)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product['category'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF9098B1))),
+                  const SizedBox(height: 2),
+                  Text(product['title'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1D2E)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _buildStarRating(
+                          (product['rating'] as num?)?.toDouble() ?? 0.0),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text('${product['reviews'] ?? 0} Reviews',
+                            style: const TextStyle(
+                                fontSize: 10, color: Color(0xFF9098B1)),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(product['price'] ?? '',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1D2E))),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _showAddedToCart(context, product),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B7FD7),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        textStyle: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Add to Cart'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // PRODUCT IMAGE HELPER (support URL dari API & asset lokal)
+  // ----------------------------------------------------------
+  Widget _buildProductImage(Map<String, dynamic> product) {
+    final image = product['image'];
+    if (image == null || image.toString().isEmpty) {
+      return _imagePlaceholder();
+    }
+    // Kalau dari API biasanya berupa URL http
+    if (image.toString().startsWith('http')) {
+      return Image.network(
+        image,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: const Color(0xFFF0F2F8),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF6B7FD7),
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    // Kalau asset lokal
+    return Image.asset(
+      image,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      color: const Color(0xFFF0F2F8),
+      child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 36),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // HELPERS
+  // ----------------------------------------------------------
+  // Tambahkan kata kunci 'async' di sini
+void _showAddedToCart(BuildContext context, Map<String, dynamic> product) async {
+  // Tambahkan 'await' agar kita mendapatkan nilai bool asli (true/false)
+  final bool added = await context.read<KeranjangController>().addToCart(product);
+  
+  late OverlayEntry overlayEntry;
+  overlayEntry = OverlayEntry(
+    builder: (context) => Center(
+      child: Material(
+        color: Colors.transparent,
+        child: TweenAnimationBuilder(
+          duration: const Duration(milliseconds: 300),
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          builder: (context, double value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.scale(
+                  scale: 0.9 + (0.1 * value), child: child),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            margin: const EdgeInsets.symmetric(horizontal: 50),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1D2E).withOpacity(0.9),
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10))
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    // SEKARANG INI SUDAH AMAN KARENA 'added' ADALAH BOOL
+                    color: added
+                        ? const Color(0xFF6B7FD7)
+                        : Colors.orangeAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    added
+                        ? Icons.shopping_cart_outlined
+                        : Icons.info_outline_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  added ? "Added to Cart!" : "Already in Cart",
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  product['title'] ?? '',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.7), fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  
+  if (!context.mounted) return; // Keamanan tambahan agar tidak error saat navigasi
+  Overlay.of(context).insert(overlayEntry);
+  Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
+}
+  Widget _buildStarRating(double rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        if (i < rating.floor()) {
+          return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
+        } else if (i < rating) {
+          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 12);
+        } else {
+          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 12);
+        }
+      }),
+    );
+  }
+}
