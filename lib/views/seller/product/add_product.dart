@@ -9,7 +9,7 @@
 // 4. Validasi sukses → saveThumbnail → save product → successResponse(status:"pending")
 // 5. Tampilkan status "Menunggu Review"
 // ============================================================
-
+import 'dart:convert';
 // ── IMPORT DART CORE ──────────────────────────────────────────────────────────
 import 'dart:io'; // Digunakan untuk File() — meniru pola di edit_profile_page.dart
 
@@ -25,9 +25,7 @@ import 'package:provider/provider.dart'; // Meniru pola di product_page.dart & h
 // Meniru pola import controller di product_page.dart
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart';
 
-// ── IMPORT HALAMAN LAIN (Navigasi) ───────────────────────────────────────────
-// Meniru pola import navigasi di product_page.dart
-import 'package:byteme_digital_marketplace/views/seller/product/product_page.dart';
+import 'package:byteme_digital_marketplace/services/api_service.dart';
 
 // ============================================================
 // ADD PRODUCT PAGE — StatefulWidget
@@ -48,6 +46,10 @@ class _AddProductPageState extends State<AddProductPage>
   static const Color _primaryBlue = Color(0xFF6B7FD7);
   static const Color _bgColor = Color(0xFFE8E8F0);
   static const Color _errorColor = Color(0xFFFF4D67);
+
+  final _accessUrlController = TextEditingController(); // ✅ wajib di Laravel
+  File? _productFile; // file produk (zip/pdf)
+  final ImagePicker _filePicker = ImagePicker();
 
   // ── FORM KEY ─────────────────────────────────────────────────────────────
   // Meniru pola _formKey di register_page.dart
@@ -70,16 +72,8 @@ class _AddProductPageState extends State<AddProductPage>
 
   // ── KATEGORI DROPDOWN ────────────────────────────────────────────────────
   // Pilihan kategori produk digital
-  final List<String> _categories = [
-    'UI Kit',
-    'Template',
-    'E-Book',
-    'Preset',
-    'Icon Pack',
-    'Font',
-    'Plugin',
-    'Other',
-  ];
+  List<Map<String, dynamic>> _categories = []; // dari API
+  bool _isLoadingCategories = false;
   String? _selectedCategory; // null = belum dipilih
 
   // ── LOADING STATE ────────────────────────────────────────────────────────
@@ -104,16 +98,14 @@ class _AddProductPageState extends State<AddProductPage>
   @override
   void initState() {
     super.initState();
+    _fetchCategories(); 
 
     // Setup animasi halaman masuk — meniru register_page.dart
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
@@ -132,6 +124,7 @@ class _AddProductPageState extends State<AddProductPage>
     _nameController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _accessUrlController.dispose();
     super.dispose();
   }
 
@@ -209,7 +202,7 @@ class _AddProductPageState extends State<AddProductPage>
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        maxWidth: 800,   // batasi ukuran thumbnail produk
+        maxWidth: 800, // batasi ukuran thumbnail produk
         maxHeight: 800,
         imageQuality: 85,
       );
@@ -239,66 +232,59 @@ class _AddProductPageState extends State<AddProductPage>
   //   → showStatus("Menunggu Review")
   // ──────────────────────────────────────────────────────────────────────────
   Future<void> _submitProduct() async {
-    // ── Validasi form (nama, deskripsi, harga, kategori) ──
-    // _formKey.currentState!.validate() meniru pola register_page.dart
     final bool formValid = _formKey.currentState!.validate();
 
-    // ── Validasi thumbnail (tidak bisa dari FormField) ──
     if (_thumbnailFile == null) {
-      // → errorResponse(message, 422) dalam sequence diagram
       _showErrorSnackbar('Please select a product thumbnail.');
       return;
     }
 
-    if (!formValid) return; // validasi form gagal
+    if (!formValid) return;
 
-    // ── Validasi kategori ──
     if (_selectedCategory == null) {
       _showErrorSnackbar('Please select a product category.');
       return;
     }
 
-    // ── Mulai loading ──
-    // Meniru pola setState(() => _isLoading = true) di register_page.dart
+    // ❌ Hapus validasi access_url karena field tidak ditampilkan
+
     setState(() => _isLoading = true);
 
-    // TODO(backend): Ganti simulasi ini dengan panggilan API nyata:
-    //   final response = await ProductService.uploadProduct(
-    //     name: _nameController.text.trim(),
-    //     description: _descriptionController.text.trim(),
-    //     price: double.parse(_priceController.text.trim()),
-    //     thumbnail: _thumbnailFile!,
-    //     category: _selectedCategory!,
-    //   );
-    //
-    // Sesuai sequence diagram:
-    //   POST /products (name, description, price, thumbnail, category)
-    //   → StorageService.saveThumbnail(thumbnail) → thumbnailUrl
-    //   → ProductRepository.save(..., status:"pending") → productSaved
-    //   → successResponse(status:"pending")
-    //   → AdminNotificationService.notifyNewProduct(productId, productData)
-    await Future.delayed(const Duration(seconds: 2)); // simulasi network call
+    try {
+      final response = await ApiService.postMultipart(
+        '/produk',
+        {
+          'nama_produk': _nameController.text.trim(),
+          'deskripsi': _descriptionController.text.trim(),
+          'harga': _priceController.text.trim(),
+          'access_url': '-', 
+          'kategori_ids[]': _selectedCategory ?? '',
+        },
+        filePaths: {'file': _thumbnailFile!.path},
+      );
 
-    if (!mounted) return;
+      debugPrint('addProduct [${response.statusCode}]: ${response.body}');
 
-    // ── Setelah sukses: tambahkan produk ke ProductController ──
-    // Meniru pola controller.addProduct() yang sudah disiapkan di product_controller.dart
-    context.read<ProductController>().addProduct({
-      'title': _nameController.text.trim(),
-      'price': 'Rp${_priceController.text.trim()}',
-      'sales': '0 sales',
-      'rating': 0.0,
-      'status': 'pending', // ← status:"pending" sesuai sequence diagram
-      'image': _thumbnailFile!.path, // path lokal (nanti diganti thumbnailUrl dari backend)
-      'description': _descriptionController.text.trim(),
-      'category': _selectedCategory,
-    });
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-      // → showStatus("Menunggu Review") dalam sequence diagram
-      _submissionStatus = 'pending';
-    });
+      if (response.statusCode == 201) {
+        context.read<ProductController>().fetchMyProducts(); // ✅ tanpa alias
+        setState(() {
+          _isLoading = false;
+          _submissionStatus = 'pending';
+        });
+      } else {
+        final data = jsonDecode(response.body);
+        _showErrorSnackbar(data['message'] ?? 'Gagal menambahkan produk');
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error submitProduct: $e');
+      if (mounted) {
+        _showErrorSnackbar('Tidak dapat terhubung ke server.');
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // ── Helper: tampilkan error SnackBar ─────────────────────────────────────
@@ -418,15 +404,13 @@ class _AddProductPageState extends State<AddProductPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── 1. THUMBNAIL PICKER ──────────────────────────────────────
-            // → saveThumbnail(thumbnail) dalam sequence diagram
-            _buildSectionLabel('Product Thumbnail'),
+            // ── 1. THUMBNAIL ──
+            _buildSectionLabel('Product Thumbnail'), // ✅ tambah label
             const SizedBox(height: 8),
             _buildThumbnailPicker(),
             const SizedBox(height: 20),
 
-            // ── 2. NAMA PRODUK ───────────────────────────────────────────
-            // → parameter "name" di submitProduct(name, ...)
+            // ── 2. NAMA PRODUK ──
             _buildSectionLabel('Product Name'),
             const SizedBox(height: 8),
             _buildTextField(
@@ -545,10 +529,7 @@ class _AddProductPageState extends State<AddProductPage>
                   fit: StackFit.expand,
                   children: [
                     // Gambar thumbnail yang dipilih
-                    Image.file(
-                      _thumbnailFile!,
-                      fit: BoxFit.cover,
-                    ),
+                    Image.file(_thumbnailFile!, fit: BoxFit.cover),
                     // Overlay gelap + ikon edit di pojok kanan bawah
                     Positioned(
                       right: 10,
@@ -597,10 +578,7 @@ class _AddProductPageState extends State<AddProductPage>
                   const SizedBox(height: 4),
                   Text(
                     'JPG, PNG — maks 5MB',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade400,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                   ),
                 ],
               ),
@@ -612,61 +590,75 @@ class _AddProductPageState extends State<AddProductPage>
   // DROPDOWN KATEGORI
   // ──────────────────────────────────────────────────────────────────────────
   Widget _buildCategoryDropdown() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          // Meniru warna border enabledBorder di register_page.dart
-          color: const Color(0xFFE8ECF4),
-          width: 1,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCategory,
-          isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          hint: Row(
-            children: [
-              const Icon(
-                Icons.category_outlined,
-                color: Color(0xFF9098B1),
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Select product category',
-                style: TextStyle(
-                  color: const Color(0xFFB0B8CC),
-                  fontSize: 14,
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFE8ECF4), width: 1),
+    ),
+    child: _isLoadingCategories
+        // ✅ Loading state
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF6B7FD7), strokeWidth: 2,
+                  ),
                 ),
+                SizedBox(width: 12),
+                Text('Loading categories...', 
+                    style: TextStyle(color: Color(0xFF9098B1), fontSize: 14)),
+              ],
+            ),
+          )
+        : DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedCategory,
+              isExpanded: true,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              hint: const Row(
+                children: [
+                  Icon(Icons.category_outlined, color: Color(0xFF9098B1), size: 20),
+                  SizedBox(width: 12),
+                  Text('Select product category',
+                      style: TextStyle(color: Color(0xFFB0B8CC), fontSize: 14)),
+                ],
               ),
-            ],
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF9098B1)),
+              borderRadius: BorderRadius.circular(12),
+              onChanged: (String? value) => setState(() => _selectedCategory = value),
+              // ✅ Pakai data dari API
+              items: _categories.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category['id'].toString(), // kirim ID ke API
+                  child: Text(
+                    category['nama'] ?? '', // tampilkan nama
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF1A1D2E)),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFF9098B1),
-          ),
-          borderRadius: BorderRadius.circular(12),
-          onChanged: (String? value) {
-            setState(() => _selectedCategory = value);
-          },
-          items: _categories.map((category) {
-            return DropdownMenuItem<String>(
-              value: category,
-              child: Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF1A1D2E),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
+  );
+}
+
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final response = await ApiService.get('/kategori');
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          _categories = data.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetch kategori: $e');
+    }
+    setState(() => _isLoadingCategories = false);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -706,10 +698,7 @@ class _AddProductPageState extends State<AddProductPage>
                   SizedBox(width: 8),
                   Text(
                     'Submit Product',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -772,8 +761,7 @@ class _AddProductPageState extends State<AddProductPage>
 
             // ── Badge Status "Pending" ──
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF3CD),
                 borderRadius: BorderRadius.circular(20),
@@ -822,10 +810,7 @@ class _AddProductPageState extends State<AddProductPage>
                 ),
                 child: const Text(
                   'View Product List',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -856,10 +841,7 @@ class _AddProductPageState extends State<AddProductPage>
                 ),
                 child: const Text(
                   'Add Product Again',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -907,23 +889,19 @@ class _AddProductPageState extends State<AddProductPage>
       validator: validator,
       maxLines: maxLines,
       // Meniru style teks di register_page.dart
-      style: const TextStyle(
-        fontSize: 14,
-        color: Color(0xFF1A1D2E),
-      ),
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1A1D2E)),
       // Meniru InputDecoration lengkap di register_page.dart
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: Color(0xFFB0B8CC),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFFB0B8CC), fontSize: 14),
         prefixIcon: Icon(icon, color: const Color(0xFF9098B1), size: 20),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -944,10 +922,7 @@ class _AddProductPageState extends State<AddProductPage>
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: _errorColor, width: 1.5),
         ),
-        errorStyle: const TextStyle(
-          fontSize: 11,
-          color: _errorColor,
-        ),
+        errorStyle: const TextStyle(fontSize: 11, color: _errorColor),
       ),
     );
   }
