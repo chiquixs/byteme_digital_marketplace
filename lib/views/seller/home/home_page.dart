@@ -26,15 +26,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   List<Widget> get _pages => [
-    SellerHomeContent(
-      onMorePressed: () => _switchTab(1),
-      onWithdrawPressed: () => _switchTab(3),
-    ),
-    SellerProductPage(onBackPressed: () => _switchTab(0)),
-    SellerOrderPage(onBackPressed: () => _switchTab(0)),
-    EarningsPage(onBackPressed: () => _switchTab(0)),
-    const SellerProfilePage(),
-  ];
+        SellerHomeContent(
+          onMorePressed: () => _switchTab(1),
+          onWithdrawPressed: () => _switchTab(3),
+        ),
+        SellerProductPage(onBackPressed: () => _switchTab(0)),
+        SellerOrderPage(onBackPressed: () => _switchTab(0)),
+        EarningsPage(onBackPressed: () => _switchTab(0)),
+        const SellerProfilePage(),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -158,9 +158,10 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     });
 
     try {
-      // ✅ Ganti /seller/products → /produk (semua produk approved)
+      // 1. Ambil data semua produk approved untuk market preview umum
       final productRes = await ApiService.get('/produk');
-      // ✅ Ganti /seller/earnings → /my-produk untuk hitung total produk seller
+      
+      // 2. Ambil data spesifik milik seller ini untuk kalkulasi statistik
       final myProdukRes = await ApiService.get('/my-produk');
 
       if (!mounted) return;
@@ -182,13 +183,23 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         final List myProducts = decoded is List
             ? decoded
             : (decoded['data'] ?? decoded['products'] ?? []);
+            
         setState(() {
           _totalProducts = myProducts.length;
-          // Hitung total sales dari produk seller sendiri
+          
+          // Kalkulasi total penjualan (sales) dari semua produk seller
           _totalSales = myProducts.fold(
             0,
             (sum, p) => sum + ((p['total_terjual'] as num?)?.toInt() ?? 0),
           );
+
+          // AMBIL DATA SALDO DARI BACKEND USER OBJECT (Melalui UserController di widget build atau sinkronisasi state)
+          final userController = Provider.of<UserController>(context, listen: false);
+          
+          
+          // sinkronkan variabel balance agar ter-update di UI
+          _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
+          _availableWithdraw = _totalBalance; // Tersedia untuk ditarik disamakan dengan saldo aktif
         });
       }
     } catch (_) {
@@ -214,6 +225,12 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
   @override
   Widget build(BuildContext context) {
     final userController = Provider.of<UserController>(context);
+    
+    // ✅ Tambahan Sinkronisasi data saldo agar UI selalu responsif saat data di UserController berubah
+    if (!_isLoading) {
+      _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
+      _availableWithdraw = _totalBalance;
+    }
 
     return SafeArea(
       child: RefreshIndicator(
@@ -424,22 +441,22 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   _isLoading
                       ? _shimmerBox(width: 90, height: 20)
                       : _availableWithdraw == 0
-                      ? const Text(
-                          'Belum ada saldo',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        )
-                      : Text(
-                          _formatRupiah(_availableWithdraw),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                          ? const Text(
+                              'Belum ada saldo',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )
+                          : Text(
+                              _formatRupiah(_availableWithdraw),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                 ],
               ),
               ElevatedButton(
@@ -495,21 +512,21 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             value == null
                 ? _shimmerBox(width: 50, height: 22)
                 : value == '0'
-                ? Text(
-                    emptyText,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  )
-                : Text(
-                    value,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
+                    ? Text(
+                        emptyText,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
           ],
         ),
       ),
@@ -545,7 +562,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       );
     }
 
-    // ✅ Ambil max 5 produk, tampil horizontal scroll
+  //✅ Ambil max 5 produk, tampil horizontal scroll
     final preview = _products.take(5).toList();
 
     return SizedBox(
@@ -612,7 +629,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar
+             // Gambar
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
@@ -723,7 +740,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
 
   Widget _buildSkeletonCard() {
     return Container(
-      width: 150, // ✅ tambah width
+      width: 150,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
