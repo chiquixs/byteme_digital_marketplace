@@ -7,6 +7,7 @@ import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/my_orders/history_orders_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/wishlist/wishlist_page.dart';
 import 'package:byteme_digital_marketplace/views/buyer/payment/unpaid_order.dart';
+import 'package:byteme_digital_marketplace/models/buyer/order_item.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -32,13 +33,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   static const Color _accentBlue = Color(0xFF3D4270);
   static const Color _white = Colors.white;
   static const Color _iconBg = Color(0xFF3D4270);
-  static const Color _starColor = Color(0xFF3D4270);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderController>().fetchCurrentOrders();
+      // 🌟 KITA BAJAK API HISTORY ORDER KARENA INI YANG SUDAH TERBUKTI JALAN 🌟
+      context.read<OrderController>().fetchHistoryOrders();
     });
   }
 
@@ -61,6 +62,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // 🌟 TAMPILAN CARD PESANAN
                         _buildPurchaseCard(orderController),
                         const SizedBox(height: 16),
 
@@ -114,7 +116,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
 
                         const SizedBox(height: 24),
 
-                        Center(
+                        const Center(
                           child: Text(
                             'ByteMe',
                             style: TextStyle(
@@ -254,7 +256,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        // TODO(backend): Panggil AuthController.logout()
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
@@ -352,10 +353,14 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   }
 
   // ----------------------------------------------------------
-  // PURCHASE CARD
+  // PURCHASE CARD (KITA AMBIL DARI HISTORY ORDER SEKARANG)
   // ----------------------------------------------------------
   Widget _buildPurchaseCard(OrderController orderController) {
-    final currentOrders = orderController.currentOrders;
+    // 🌟 KUNCI PERUBAHAN: MENGAMBIL DARI HISTORY BUKAN CURRENT 🌟
+    final orders = orderController.historyOrders;
+    
+    // Ambil maksimal 2 data teratas
+    final displayOrders = orders.take(2).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -372,10 +377,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
             child: Text(
-              'Current Order',
+              'Recent Orders', // Diganti nama agar lebih masuk akal
               style: TextStyle(
                 color: _accentBlue,
                 fontWeight: FontWeight.bold,
@@ -384,12 +389,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             ),
           ),
           const Divider(height: 1, thickness: 0.5),
-          if (currentOrders.isEmpty)
+          
+          if (displayOrders.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Center(
                 child: Text(
-                  'No current orders',
+                  'No recent orders',
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
@@ -398,62 +404,66 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
               ),
             )
           else
-            ...currentOrders.map((order) => Column(
-              children: [
-                _buildProductRow(
-                  title: order.productName,
-                  rating: order.rating ?? 0,
-                  reviews: '${order.quantity} items',
-                  isLast: order == currentOrders.last,
-                ),
-                if (order != currentOrders.last)
-                  const Divider(height: 1, thickness: 0.5, indent: 16),
-              ],
-            )),
+            ...displayOrders.asMap().entries.map((entry) {
+              final int index = entry.key;
+              final OrderItem order = entry.value;
+              final bool isLast = index == displayOrders.length - 1;
+
+              return Column(
+                children: [
+                  _buildProductRow(
+                    order: order,
+                    isLast: isLast,
+                  ),
+                  if (!isLast)
+                    const Divider(height: 1, thickness: 0.5, indent: 16),
+                ],
+              );
+            }),
         ],
       ),
     );
   }
 
+  // 🌟 Sama persis dengan HistoryOrdersPage 🌟
   Widget _buildProductRow({
-    required String title,
-    required int rating,
-    required String reviews,
+    required OrderItem order,
     bool isLast = false,
   }) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 12, 16, isLast ? 14 : 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _accentBlue.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
+            width: 65,
+            height: 65,
+            decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(12)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: order.imagePath.isNotEmpty && order.imagePath.startsWith('http')
+                  ? Image.network(
+                      order.imagePath,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Color(0xFF8B90C1), size: 28),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B7FD7)));
+                      },
+                    )
+                  : const Icon(Icons.shopping_bag_outlined, color: Color(0xFF8B90C1), size: 28),
             ),
-            child: Icon(Icons.image_outlined,
-                color: _accentBlue.withOpacity(0.5)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2E2E2E))),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.star_rounded, color: _starColor, size: 16),
-                    const SizedBox(width: 4),
-                    Text('$rating  $reviews',
-                        style:
-                            TextStyle(fontSize: 12, color: Colors.grey[600])),
-                  ],
+                Text(
+                  order.productName, 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF3D4270)), 
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis
                 ),
               ],
             ),
@@ -499,12 +509,14 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2A2A2A),
-                  )),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2A2A2A),
+                ),
+              ),
             ),
             const Icon(Icons.chevron_right_rounded, color: Colors.grey),
           ],
