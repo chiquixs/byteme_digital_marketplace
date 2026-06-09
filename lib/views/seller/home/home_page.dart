@@ -1,3 +1,8 @@
+// ============================================================
+// SELLER HOME PAGE - Fixed Dashboard Analytics Version
+// Letakkan file ini di: lib/views/seller/home/seller_home_page.dart
+// ============================================================
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -158,10 +163,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     });
 
     try {
-      // 1. Ambil data semua produk approved untuk market preview umum
       final productRes = await ApiService.get('/produk');
-      
-      // 2. Ambil data spesifik milik seller ini untuk kalkulasi statistik
       final myProdukRes = await ApiService.get('/my-produk');
 
       if (!mounted) return;
@@ -187,19 +189,17 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         setState(() {
           _totalProducts = myProducts.length;
           
-          // Kalkulasi total penjualan (sales) dari semua produk seller
+          // 🌟 LIVE FIXED: Sekarang qty_terjual ditaruh di depan agar terbaca dari Laravel
           _totalSales = myProducts.fold(
             0,
-            (sum, p) => sum + ((p['total_terjual'] as num?)?.toInt() ?? 0),
+            (sum, p) {
+              var terjualRaw = p['qty_terjual'] ?? p['total_terjual'] ?? p['terjual'] ?? p['sold'] ?? p['qty_sold'] ?? 0;
+              int angkaTerjual = terjualRaw is num 
+                  ? terjualRaw.toInt() 
+                  : (int.tryParse(terjualRaw.toString()) ?? 0);
+              return sum + angkaTerjual;
+            },
           );
-
-          // AMBIL DATA SALDO DARI BACKEND USER OBJECT (Melalui UserController di widget build atau sinkronisasi state)
-          final userController = Provider.of<UserController>(context, listen: false);
-          
-          
-          // sinkronkan variabel balance agar ter-update di UI
-          _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
-          _availableWithdraw = _totalBalance; // Tersedia untuk ditarik disamakan dengan saldo aktif
         });
       }
     } catch (_) {
@@ -226,11 +226,8 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
   Widget build(BuildContext context) {
     final userController = Provider.of<UserController>(context);
     
-    // ✅ Tambahan Sinkronisasi data saldo agar UI selalu responsif saat data di UserController berubah
-    if (!_isLoading) {
-      _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
-      _availableWithdraw = _totalBalance;
-    }
+    _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
+    _availableWithdraw = _totalBalance;
 
     return SafeArea(
       child: RefreshIndicator(
@@ -380,7 +377,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Balance Card ─────────────────────────────────────────────────────────
   Widget _buildBalanceCard() {
     return Container(
       width: double.infinity,
@@ -416,16 +412,14 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             ],
           ),
           const SizedBox(height: 6),
-          _isLoading
-              ? _shimmerBox(width: 140, height: 36)
-              : Text(
-                  _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          Text(
+            _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -438,25 +432,23 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                     style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
-                  _isLoading
-                      ? _shimmerBox(width: 90, height: 20)
-                      : _availableWithdraw == 0
-                          ? const Text(
-                              'Belum ada saldo',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            )
-                          : Text(
-                              _formatRupiah(_availableWithdraw),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                  _availableWithdraw == 0
+                      ? const Text(
+                          'Belum ada saldo',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      : Text(
+                          _formatRupiah(_availableWithdraw),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ],
               ),
               ElevatedButton(
@@ -481,7 +473,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Stat Card ────────────────────────────────────────────────────────────
   Widget _buildStatCard(
     String label,
     String? value,
@@ -533,7 +524,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Product Section ──────────────────────────────────────────────────────
   Widget _buildProductSection() {
     if (_isLoading) {
       return SizedBox(
@@ -562,7 +552,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       );
     }
 
-  //✅ Ambil max 5 produk, tampil horizontal scroll
     final preview = _products.take(5).toList();
 
     return SizedBox(
@@ -611,7 +600,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
           ),
         );
       },
-      // ✅ Tambah width dan margin untuk horizontal scroll
       child: Container(
         width: 150,
         margin: const EdgeInsets.only(right: 12),
@@ -629,7 +617,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             // Gambar
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
@@ -646,7 +633,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                     : _placeholderImage(),
               ),
             ),
-            // Info
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
@@ -692,8 +678,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       ),
     );
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
 
   Widget _placeholderImage() {
     return Container(
