@@ -1,3 +1,8 @@
+// ============================================================
+// SELLER HOME PAGE - Fixed Dashboard Analytics Version
+// Letakkan file ini di: lib/views/seller/home/seller_home_page.dart
+// ============================================================
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -158,12 +163,8 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     });
 
     try {
-      // 1. Ambil data semua produk approved untuk market preview umum
       final productRes = await ApiService.get('/produk');
-      
-      // 2. Ambil data spesifik milik seller ini untuk kalkulasi statistik
       final myProdukRes = await ApiService.get('/my-produk');
-      
 
       if (!mounted) return;
 
@@ -188,11 +189,11 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         setState(() {
           _totalProducts = myProducts.length;
           
-          // Kalkulasi total penjualan
+          // 🌟 LIVE FIXED: Sekarang qty_terjual ditaruh di depan agar terbaca dari Laravel
           _totalSales = myProducts.fold(
             0,
             (sum, p) {
-              var terjualRaw = p['total_terjual'] ?? p['terjual'] ?? p['sold'] ?? p['qty_sold'] ?? 0;
+              var terjualRaw = p['qty_terjual'] ?? p['total_terjual'] ?? p['terjual'] ?? p['sold'] ?? p['qty_sold'] ?? 0;
               int angkaTerjual = terjualRaw is num 
                   ? terjualRaw.toInt() 
                   : (int.tryParse(terjualRaw.toString()) ?? 0);
@@ -225,7 +226,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
   Widget build(BuildContext context) {
     final userController = Provider.of<UserController>(context);
     
-    // ✅ PERBAIKAN LOGIKA: Langsung ambil data saldo dari Provider
     _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
     _availableWithdraw = _totalBalance;
 
@@ -377,7 +377,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Balance Card ─────────────────────────────────────────────────────────
   Widget _buildBalanceCard() {
     return Container(
       width: double.infinity,
@@ -413,7 +412,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             ],
           ),
           const SizedBox(height: 6),
-          // ✅ Loading indicator dimatikan khusus saldo agar muncul real-time
           Text(
             _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
             style: const TextStyle(
@@ -475,7 +473,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Stat Card ────────────────────────────────────────────────────────────
   Widget _buildStatCard(
     String label,
     String? value,
@@ -527,7 +524,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Product Section ──────────────────────────────────────────────────────
   Widget _buildProductSection() {
     if (_isLoading) {
       return SizedBox(
@@ -555,8 +551,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         sub: 'Tambahkan produk pertamamu di tab Product',
       );
     }
-
-    //✅ Ambil max 5 produk, tampil horizontal scroll
 
     final preview = _products.take(5).toList();
 
@@ -639,8 +633,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                     : _placeholderImage(),
               ),
             ),
-
-             // Info
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
@@ -686,8 +678,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       ),
     );
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
 
   Widget _placeholderImage() {
     return Container(
