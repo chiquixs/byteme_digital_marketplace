@@ -3,7 +3,7 @@ import '../product/product_detail_page.dart';
 import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
-// WISHLIST PAGE - Produk yang di-like
+// WISHLIST PAGE - Produk yang di-like (Fixed Image Crash)
 // Letakkan file ini di: lib/views/wishlist/wishlist_page.dart
 // ============================================================
 
@@ -271,27 +271,9 @@ class _WishlistPageState extends State<WishlistPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.asset(
-                      product['image'] ?? 'assets/images/e-book.jpeg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFF0F2F8),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.image_rounded,
-                                color: Color(0xFFB0B8CC), size: 36),
-                            SizedBox(height: 6),
-                            Text(
-                              'Belum ada\ngambar',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 10, color: Color(0xFFB0B8CC)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // 🌟 MENGGUNAKAN SMART IMAGE BUILDER AGAR TIDAK CRASH
+                    _buildProductImage(product),
+                    
                     // Badge kategori
                     if (product['category'] != null)
                       Positioned(
@@ -385,7 +367,7 @@ class _WishlistPageState extends State<WishlistPage> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          product['reviews'] ?? '',
+                          product['reviews']?.toString() ?? '0',
                           style: const TextStyle(
                               fontSize: 10, color: Color(0xFF9098B1)),
                           overflow: TextOverflow.ellipsis,
@@ -444,6 +426,37 @@ class _WishlistPageState extends State<WishlistPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // SMART PRODUCT IMAGE BUILDER (Mencegah Crash)
+  // ----------------------------------------------------------
+  Widget _buildProductImage(Map<String, dynamic> product) {
+    final image = product['image'] ?? product['file_path'];
+    if (image == null || image.toString().isEmpty) {
+      return Container(
+        color: const Color(0xFFF0F2F8),
+        child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 36),
+      );
+    }
+    if (image.toString().startsWith('http')) {
+      return Image.network(
+        image,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: const Color(0xFFF0F2F8),
+          child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 36),
+        ),
+      );
+    }
+    return Image.asset(
+      image,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: const Color(0xFFF0F2F8),
+        child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 36),
       ),
     );
   }
