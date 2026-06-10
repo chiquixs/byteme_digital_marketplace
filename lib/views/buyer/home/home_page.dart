@@ -126,6 +126,7 @@ class _HomeContentState extends State<HomeContent> {
   final PageController _bannerController = PageController();
   int _currentBanner = 0;
   Timer? _bannerTimer;
+  final Set<String> _loadingProductIds = {};
 
   // ── FALLBACK BANNER (tampil kalau API belum return data) ──
   static const List<Map<String, dynamic>> _fallbackBanners = [
@@ -628,6 +629,9 @@ class _HomeContentState extends State<HomeContent> {
     // VARIABEL DIPINDAH KE DALAM SINI AGAR TIDAK ERROR
     final double rating = _parseRating(product);
     final int reviews = _parseReviews(product);
+    final bool isLoadingThis = _loadingProductIds.contains(
+      (product['id'] ?? product['produk_id'] ?? '').toString(),
+    );
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -744,7 +748,9 @@ class _HomeContentState extends State<HomeContent> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _showAddedToCart(context, product),
+                      onPressed: isLoadingThis
+                          ? null
+                          : () => _showAddedToCart(context, product),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6B7FD7),
                         foregroundColor: Colors.white,
@@ -758,7 +764,16 @@ class _HomeContentState extends State<HomeContent> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      child: const Text('Add to Cart'),
+                      child: isLoadingThis
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Add to Cart'),
                     ),
                   ),
                 ],
@@ -941,13 +956,26 @@ class _HomeContentState extends State<HomeContent> {
   // ----------------------------------------------------------
   // HELPERS
   // ----------------------------------------------------------
-  void _showAddedToCart(
+  Future<void> _showAddedToCart(
     BuildContext context,
     Map<String, dynamic> product,
   ) async {
+    final String productId = (product['id'] ?? product['produk_id'] ?? '')
+        .toString();
+
+    if (_loadingProductIds.contains(productId)) return;
+
+    setState(() => _loadingProductIds.add(productId));
+
     final bool added = await context.read<KeranjangController>().addToCart(
       product,
     );
+
+    if (mounted) {
+      setState(() => _loadingProductIds.remove(productId));
+    }
+
+    if (!context.mounted) return;
 
     late OverlayEntry overlayEntry;
     overlayEntry = OverlayEntry(
