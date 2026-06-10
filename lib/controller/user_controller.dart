@@ -10,8 +10,9 @@ class UserController extends ChangeNotifier {
   String _email = '';
   String _phoneNumber = '';
   String? _profileImagePath; // path file lokal (sementara, sebelum di-upload)
-  String? _profileImageUrl;  // ← TAMBAH: URL dari Supabase (permanent)
+  String? _profileImageUrl;  // TAMBAH: URL dari Supabase (permanent)
   String _role = 'Buyer';
+  double _balance = 0.0; // Menyimpan saldo dari backend (Supabase)
   List<Map<String, dynamic>> _pendingOrders = [];
 
   String get username => _username;
@@ -21,6 +22,7 @@ class UserController extends ChangeNotifier {
   String? get profileImagePath => _profileImagePath;
   String? get profileImageUrl => _profileImageUrl; // ← TAMBAH getter
   String get role => _role;
+  double get balance => _balance; // ➔ TAMBAH getter saldo
   List<Map<String, dynamic>> get pendingOrders => _pendingOrders;
 
   final ImagePicker _picker = ImagePicker();
@@ -34,6 +36,7 @@ class UserController extends ChangeNotifier {
     _role            = prefs.getString('user_role') ?? 'Buyer';
     _displayName     = prefs.getString('user_displayname') ?? _username;
     _profileImageUrl = prefs.getString('user_profile_image'); // ← TAMBAH
+    _balance         = prefs.getDouble('user_balance') ?? 0.0; // ➔ TAMBAH load saldo lokal
     notifyListeners();
   }
 
@@ -48,11 +51,15 @@ class UserController extends ChangeNotifier {
     _displayName     = user.username;
     _profileImageUrl = user.profileImage; // ← TAMBAH
 
+    // KODE YANG DIPERBAIKI: Langsung ambil tanpa try-catch dan dynamic
+    _balance = user.balance ?? 0.0;
+
     await prefs.setString('user_username', user.username);
     await prefs.setString('user_email', user.email);
     await prefs.setString('user_phone', user.phone);
     await prefs.setString('user_role', user.role);
     await prefs.setString('user_displayname', user.username);
+    await prefs.setDouble('user_balance', _balance);
 
     // ← TAMBAH: simpan / hapus URL foto di SharedPreferences
     if (user.profileImage != null && user.profileImage!.isNotEmpty) {
@@ -61,7 +68,7 @@ class UserController extends ChangeNotifier {
       await prefs.remove('user_profile_image');
     }
 
-    _profileImagePath = null; // bersihkan path lokal setelah upload berhasil
+    _profileImagePath = null;
     notifyListeners();
   }
 
@@ -76,7 +83,8 @@ class UserController extends ChangeNotifier {
     _role             = 'Buyer';
     _displayName      = '';
     _profileImagePath = null;
-    _profileImageUrl  = null; // ← TAMBAH
+    _profileImageUrl  = null; 
+    _balance          = 0.0; 
     _pendingOrders    = [];
 
     notifyListeners();
@@ -99,6 +107,15 @@ class UserController extends ChangeNotifier {
 
   void updatePhoneNumber(String newPhone) {
     _phoneNumber = newPhone;
+    notifyListeners();
+  }
+
+  // Fungsi mengubah saldo manual di frontend (misal setelah withdraw sukses)
+  void updateBalance(double newBalance) {
+    _balance = newBalance;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setDouble('user_balance', newBalance);
+    });
     notifyListeners();
   }
 

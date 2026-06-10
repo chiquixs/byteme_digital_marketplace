@@ -11,7 +11,6 @@ import '../product/product_detail_page.dart';
 import '../wishlist/wishlist_page.dart';
 import 'package:byteme_digital_marketplace/controller/buyer/cart_controller.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -87,11 +86,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                color: isSelected
-                    ? const Color(0xFF6B7FD7)
-                    : const Color(0xFFB0B8CC),
-                size: 24),
+            Icon(
+              icon,
+              color: isSelected
+                  ? const Color(0xFF6B7FD7)
+                  : const Color(0xFFB0B8CC),
+              size: 24,
+            ),
             const SizedBox(height: 4),
             Text(
               label,
@@ -167,7 +168,6 @@ class _HomeContentState extends State<HomeContent> {
   void _startBannerTimer() {
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
-      // Pakai fallback banners untuk hitung jumlah slide
       final count = _fallbackBanners.length;
       final next = (_currentBanner + 1) % count;
       _bannerController.animateToPage(
@@ -178,11 +178,53 @@ class _HomeContentState extends State<HomeContent> {
     });
   }
 
+  double _parseRating(Map<String, dynamic> product) {
+    final possibleKeys = [
+      'reviews_avg_rating',
+      'rating',
+      'rata_rata',
+      'review_avg_rating',
+    ];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+      if (val != null) {
+        if (val is num) return val.toDouble();
+
+        if (val is String) {
+          final cleanVal = val.replaceAll(RegExp(r'[^0-9.]'), '');
+          final parsed = double.tryParse(cleanVal);
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0.0;
+  }
+
+  int _parseReviews(Map<String, dynamic> product) {
+    final possibleKeys = ['reviews_count', 'reviews', 'total_reviews'];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+
+      if (val != null) {
+        if (val is num) return val.toInt();
+
+        if (val is String) {
+          final parsed = int.tryParse(val.replaceAll(RegExp(r'[^0-9]'), ''));
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<UserController, ProductController>(
       builder: (context, userController, productController, child) {
-        // Pakai data dari API, fallback ke statis kalau kosong
         final banners = productController.banners.isNotEmpty
             ? productController.banners
             : _fallbackBanners;
@@ -230,19 +272,20 @@ class _HomeContentState extends State<HomeContent> {
                         ),
                       )
                     : mostPurchased.isEmpty
-                        ? _buildEmptyState('Belum ada produk terlaris saat ini')
-                        : SizedBox(
-                            height: 240,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              itemCount: mostPurchased.length,
-                              itemBuilder: (context, index) =>
-                                  _buildHorizontalProductCard(
-                                      mostPurchased[index], context),
-                            ),
-                          ),
+                    ? _buildEmptyState('Belum ada produk terlaris saat ini')
+                    : SizedBox(
+                        height: 240,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: mostPurchased.length,
+                          itemBuilder: (context, index) =>
+                              _buildHorizontalProductCard(
+                                mostPurchased[index],
+                                context,
+                              ),
+                        ),
+                      ),
               ),
 
               // ── SECTION: PALING BANYAK DICARI ──
@@ -268,7 +311,9 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                 )
               else if (mostSearched.isEmpty)
-                SliverToBoxAdapter(child: _buildEmptyState('Belum ada produk yang dicari'))
+                SliverToBoxAdapter(
+                  child: _buildEmptyState('Belum ada produk yang dicari'),
+                )
               else
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -280,11 +325,11 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      childAspectRatio: 0.60,
-                    ),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 0.7,
+                        ),
                   ),
                 ),
 
@@ -355,22 +400,18 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                   )
                 : userController.profileImageUrl != null
-                    ? Image.network(
-                        userController.profileImageUrl!,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.person,
-                          color: Color(0xFF6B7FD7),
-                          size: 28,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        color: Color(0xFF6B7FD7),
-                        size: 28,
-                      ),
+                ? Image.network(
+                    userController.profileImageUrl!,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      color: Color(0xFF6B7FD7),
+                      size: 28,
+                    ),
+                  )
+                : const Icon(Icons.person, color: Color(0xFF6B7FD7), size: 28),
           ),
         ),
         const SizedBox(width: 12),
@@ -420,8 +461,11 @@ class _HomeContentState extends State<HomeContent> {
                 ),
               ],
             ),
-            child: const Icon(Icons.favorite,
-                color: Color(0xFFFF4D67), size: 22),
+            child: const Icon(
+              Icons.favorite,
+              color: Color(0xFFFF4D67),
+              size: 22,
+            ),
           ),
         ),
       ],
@@ -485,12 +529,16 @@ class _HomeContentState extends State<HomeContent> {
                               foregroundColor: const Color(0xFF6B7FD7),
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               textStyle: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             child: const Text('Shop Now'),
                           ),
@@ -549,14 +597,20 @@ class _HomeContentState extends State<HomeContent> {
           onTap: onMore,
           child: const Row(
             children: [
-              Text('more',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B7FD7),
-                      fontWeight: FontWeight.w500)),
+              Text(
+                'more',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7FD7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               SizedBox(width: 2),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 11, color: Color(0xFF6B7FD7)),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 11,
+                color: Color(0xFF6B7FD7),
+              ),
             ],
           ),
         ),
@@ -568,10 +622,18 @@ class _HomeContentState extends State<HomeContent> {
   // HORIZONTAL PRODUCT CARD
   // ----------------------------------------------------------
   Widget _buildHorizontalProductCard(
-      Map<String, dynamic> product, BuildContext context) {
+    Map<String, dynamic> product,
+    BuildContext context,
+  ) {
+    // VARIABEL DIPINDAH KE DALAM SINI AGAR TIDAK ERROR
+    final double rating = _parseRating(product);
+    final int reviews = _parseReviews(product);
+
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
+      ),
       child: Container(
         width: 155,
         margin: const EdgeInsets.only(right: 14),
@@ -580,9 +642,10 @@ class _HomeContentState extends State<HomeContent> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4))
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
@@ -592,8 +655,9 @@ class _HomeContentState extends State<HomeContent> {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                     child: SizedBox(
                       width: double.infinity,
                       child: _buildProductImage(product),
@@ -605,16 +669,21 @@ class _HomeContentState extends State<HomeContent> {
                       left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1D2E).withOpacity(0.75),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(product['badge'],
-                            style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          product['badge'],
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -625,34 +694,52 @@ class _HomeContentState extends State<HomeContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product['category'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 10, color: Color(0xFF9098B1))),
+                  Text(
+                    product['category'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF9098B1),
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(product['title'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1D2E)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    product['title'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1D2E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _buildStarRating(
-                          (product['rating'] as num?)?.toDouble() ?? 0.0),
+                      _buildStarRating(rating),
                       const SizedBox(width: 4),
-                      Text('${product['reviews'] ?? 0}',
+                      Expanded(
+                        child: Text(
+                          rating > 0
+                              ? '${rating.toStringAsFixed(1)} ($reviews)'
+                              : 'Baru',
                           style: const TextStyle(
-                              fontSize: 10, color: Color(0xFF9098B1))),
+                            fontSize: 10,
+                            color: Color(0xFF9098B1),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(product['price'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1D2E))),
+                  Text(
+                    product['price'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1D2E),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -664,9 +751,12 @@ class _HomeContentState extends State<HomeContent> {
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 7),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         textStyle: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w600),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       child: const Text('Add to Cart'),
                     ),
@@ -684,19 +774,28 @@ class _HomeContentState extends State<HomeContent> {
   // GRID PRODUCT CARD
   // ----------------------------------------------------------
   Widget _buildGridProductCard(
-      Map<String, dynamic> product, BuildContext context) {
+    Map<String, dynamic> product,
+    BuildContext context,
+  ) {
+    // VARIABEL DIPINDAH KE DALAM SINI AGAR TIDAK ERROR
+    final double rating = _parseRating(product);
+    final int reviews = _parseReviews(product);
+
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => ProductDetailPage(product: product))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4))
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
@@ -704,11 +803,13 @@ class _HomeContentState extends State<HomeContent> {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: SizedBox(
-                    width: double.infinity,
-                    child: _buildProductImage(product)),
+                  width: double.infinity,
+                  child: _buildProductImage(product),
+                ),
               ),
             ),
             Padding(
@@ -716,37 +817,52 @@ class _HomeContentState extends State<HomeContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product['category'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 10, color: Color(0xFF9098B1))),
+                  Text(
+                    product['category'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF9098B1),
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(product['title'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1D2E)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    product['title'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1D2E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _buildStarRating(
-                          (product['rating'] as num?)?.toDouble() ?? 0.0),
+                      _buildStarRating(rating),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text('${product['reviews'] ?? 0} Reviews',
-                            style: const TextStyle(
-                                fontSize: 10, color: Color(0xFF9098B1)),
-                            overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          rating > 0
+                              ? '${rating.toStringAsFixed(1)} ($reviews)'
+                              : 'Baru',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF9098B1),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(product['price'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1D2E))),
+                  Text(
+                    product['price'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1D2E),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -758,9 +874,12 @@ class _HomeContentState extends State<HomeContent> {
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         textStyle: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       child: const Text('Add to Cart'),
                     ),
@@ -775,14 +894,13 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   // ----------------------------------------------------------
-  // PRODUCT IMAGE HELPER (support URL dari API & asset lokal)
+  // PRODUCT IMAGE HELPER
   // ----------------------------------------------------------
   Widget _buildProductImage(Map<String, dynamic> product) {
     final image = product['image'];
     if (image == null || image.toString().isEmpty) {
       return _imagePlaceholder();
     }
-    // Kalau dari API biasanya berupa URL http
     if (image.toString().startsWith('http')) {
       return Image.network(
         image,
@@ -802,7 +920,6 @@ class _HomeContentState extends State<HomeContent> {
         },
       );
     }
-    // Kalau asset lokal
     return Image.asset(
       image,
       fit: BoxFit.cover,
@@ -813,104 +930,125 @@ class _HomeContentState extends State<HomeContent> {
   Widget _imagePlaceholder() {
     return Container(
       color: const Color(0xFFF0F2F8),
-      child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 36),
+      child: const Icon(
+        Icons.image_rounded,
+        color: Color(0xFFB0B8CC),
+        size: 36,
+      ),
     );
   }
 
   // ----------------------------------------------------------
   // HELPERS
   // ----------------------------------------------------------
-  // Tambahkan kata kunci 'async' di sini
-void _showAddedToCart(BuildContext context, Map<String, dynamic> product) async {
-  // Tambahkan 'await' agar kita mendapatkan nilai bool asli (true/false)
-  final bool added = await context.read<KeranjangController>().addToCart(product);
-  
-  late OverlayEntry overlayEntry;
-  overlayEntry = OverlayEntry(
-    builder: (context) => Center(
-      child: Material(
-        color: Colors.transparent,
-        child: TweenAnimationBuilder(
-          duration: const Duration(milliseconds: 300),
-          tween: Tween<double>(begin: 0.0, end: 1.0),
-          builder: (context, double value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.scale(
-                  scale: 0.9 + (0.1 * value), child: child),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            margin: const EdgeInsets.symmetric(horizontal: 50),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1D2E).withOpacity(0.9),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
+  void _showAddedToCart(
+    BuildContext context,
+    Map<String, dynamic> product,
+  ) async {
+    final bool added = await context.read<KeranjangController>().addToCart(
+      product,
+    );
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            builder: (context, double value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.scale(
+                  scale: 0.9 + (0.1 * value),
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              margin: const EdgeInsets.symmetric(horizontal: 50),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1D2E).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
                     color: Colors.black.withOpacity(0.3),
                     blurRadius: 20,
-                    offset: const Offset(0, 10))
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    // SEKARANG INI SUDAH AMAN KARENA 'added' ADALAH BOOL
-                    color: added
-                        ? const Color(0xFF6B7FD7)
-                        : Colors.orangeAccent,
-                    shape: BoxShape.circle,
+                    offset: const Offset(0, 10),
                   ),
-                  child: Icon(
-                    added
-                        ? Icons.shopping_cart_outlined
-                        : Icons.info_outline_rounded,
-                    color: Colors.white,
-                    size: 32,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: added
+                          ? const Color(0xFF6B7FD7)
+                          : Colors.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      added
+                          ? Icons.shopping_cart_outlined
+                          : Icons.info_outline_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  added ? "Added to Cart!" : "Already in Cart",
-                  style: const TextStyle(
+                  const SizedBox(height: 16),
+                  Text(
+                    added ? "Added to Cart!" : "Already in Cart",
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product['title'] ?? '',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.white.withOpacity(0.7), fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product['title'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-  
-  if (!context.mounted) return; // Keamanan tambahan agar tidak error saat navigasi
-  Overlay.of(context).insert(overlayEntry);
-  Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
-}
+    );
+
+    if (!context.mounted) return;
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
+  }
+
   Widget _buildStarRating(double rating) {
     return Row(
       children: List.generate(5, (i) {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
         } else if (i < rating) {
-          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 12);
+          return const Icon(
+            Icons.star_half,
+            color: Color(0xFFFFB800),
+            size: 12,
+          );
         } else {
-          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 12);
+          return const Icon(
+            Icons.star_border,
+            color: Color(0xFFD0D5E8),
+            size: 12,
+          );
         }
       }),
     );

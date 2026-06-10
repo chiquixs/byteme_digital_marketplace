@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -26,15 +27,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   List<Widget> get _pages => [
-    SellerHomeContent(
-      onMorePressed: () => _switchTab(1),
-      onWithdrawPressed: () => _switchTab(3),
-    ),
-    SellerProductPage(onBackPressed: () => _switchTab(0)),
-    SellerOrderPage(onBackPressed: () => _switchTab(0)),
-    EarningsPage(onBackPressed: () => _switchTab(0)),
-    const SellerProfilePage(),
-  ];
+        SellerHomeContent(
+          onMorePressed: () => _switchTab(1),
+          onWithdrawPressed: () => _switchTab(3),
+        ),
+        SellerProductPage(onBackPressed: () => _switchTab(0)),
+        SellerOrderPage(onBackPressed: () => _switchTab(0)),
+        EarningsPage(onBackPressed: () => _switchTab(0)),
+        const SellerProfilePage(),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -158,9 +159,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     });
 
     try {
-      // ✅ Ganti /seller/products → /produk (semua produk approved)
       final productRes = await ApiService.get('/produk');
-      // ✅ Ganti /seller/earnings → /my-produk untuk hitung total produk seller
       final myProdukRes = await ApiService.get('/my-produk');
 
       if (!mounted) return;
@@ -182,12 +181,19 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         final List myProducts = decoded is List
             ? decoded
             : (decoded['data'] ?? decoded['products'] ?? []);
+            
         setState(() {
           _totalProducts = myProducts.length;
-          // Hitung total sales dari produk seller sendiri
+          
           _totalSales = myProducts.fold(
             0,
-            (sum, p) => sum + ((p['total_terjual'] as num?)?.toInt() ?? 0),
+            (sum, p) {
+              var terjualRaw = p['qty_terjual'] ?? p['total_terjual'] ?? p['terjual'] ?? p['sold'] ?? p['qty_sold'] ?? 0;
+              int angkaTerjual = terjualRaw is num 
+                  ? terjualRaw.toInt() 
+                  : (int.tryParse(terjualRaw.toString()) ?? 0);
+              return sum + angkaTerjual;
+            },
           );
         });
       }
@@ -211,9 +217,71 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     return 'Rp ${buffer.toString()}';
   }
 
+  // ✅ FUNGSI BANTU RATING DARI BERANDA BUYER
+  double _parseRating(Map<String, dynamic> product) {
+    final possibleKeys = [
+      'reviews_avg_rating',
+      'rating',
+      'rata_rata',
+      'review_avg_rating'
+    ];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+      if (val != null) {
+        if (val is num) return val.toDouble();
+
+        if (val is String) {
+          final cleanVal = val.replaceAll(RegExp(r'[^0-9.]'), '');
+          final parsed = double.tryParse(cleanVal);
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0.0;
+  }
+
+  int _parseReviews(Map<String, dynamic> product) {
+    final possibleKeys = ['reviews_count', 'reviews', 'total_reviews'];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+
+      if (val != null) {
+        if (val is num) return val.toInt();
+
+        if (val is String) {
+          final parsed =
+              int.tryParse(val.replaceAll(RegExp(r'[^0-9]'), ''));
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  Widget _buildStarRating(double rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        if (i < rating.floor()) {
+          return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
+        } else if (i < rating) {
+          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 12);
+        } else {
+          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 12);
+        }
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userController = Provider.of<UserController>(context);
+    
+    _totalBalance = (userController.balance as num?)?.toDouble() ?? 0.0;
+    _availableWithdraw = _totalBalance;
 
     return SafeArea(
       child: RefreshIndicator(
@@ -363,7 +431,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Balance Card ─────────────────────────────────────────────────────────
   Widget _buildBalanceCard() {
     return Container(
       width: double.infinity,
@@ -399,16 +466,14 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             ],
           ),
           const SizedBox(height: 6),
-          _isLoading
-              ? _shimmerBox(width: 140, height: 36)
-              : Text(
-                  _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          Text(
+            _totalBalance == 0 ? 'Rp 0' : _formatRupiah(_totalBalance),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -421,9 +486,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                     style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
-                  _isLoading
-                      ? _shimmerBox(width: 90, height: 20)
-                      : _availableWithdraw == 0
+                  _availableWithdraw == 0
                       ? const Text(
                           'Belum ada saldo',
                           style: TextStyle(
@@ -464,7 +527,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
-  // ── Stat Card ────────────────────────────────────────────────────────────
   Widget _buildStatCard(
     String label,
     String? value,
@@ -495,37 +557,41 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
             value == null
                 ? _shimmerBox(width: 50, height: 22)
                 : value == '0'
-                ? Text(
-                    emptyText,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  )
-                : Text(
-                    value,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
+                    ? Text(
+                        emptyText,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
           ],
         ),
       ),
     );
   }
 
-  // ── Product Section ──────────────────────────────────────────────────────
+  // ✅ DIGANTI MENJADI GRIDVIEW AGAR SCROLL KE BAWAH
   Widget _buildProductSection() {
     if (_isLoading) {
-      return SizedBox(
-        height: 200,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: 3,
-          itemBuilder: (_, __) => _buildSkeletonCard(),
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 0.9, 
         ),
+        itemCount: 4,
+        itemBuilder: (_, __) => _buildSkeletonCard(),
       );
     }
 
@@ -545,17 +611,20 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       );
     }
 
-    // ✅ Ambil max 5 produk, tampil horizontal scroll
-    final preview = _products.take(5).toList();
+    final preview = _products.take(6).toList(); // Ku ganti 6 biar seimbang kotaknya
 
-    return SizedBox(
-      height: 220,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: preview.length,
-        itemBuilder: (context, index) =>
-            _buildProductCard(context, preview[index]),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 0.75, 
       ),
+      itemCount: preview.length,
+      itemBuilder: (context, index) =>
+          _buildProductCard(context, preview[index]),
     );
   }
 
@@ -569,7 +638,11 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     final double price = rawPrice is num
         ? rawPrice.toDouble()
         : double.tryParse(rawPrice.toString()) ?? 0.0;
-    final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
+        
+    // ✅ Memanggil fungsi parse yang sudah dibuat di atas
+    final double rating = _parseRating(product);
+    final int reviews = _parseReviews(product);
+    
     final String? imageUrl =
         product['file_path'] ??
         product['gambar'] ??
@@ -594,10 +667,8 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
           ),
         );
       },
-      // ✅ Tambah width dan margin untuk horizontal scroll
       child: Container(
-        width: 150,
-        margin: const EdgeInsets.only(right: 12),
+        // Lebar & Margin dihilangkan karena GridView yang akan mengaturnya
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -612,24 +683,25 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: SizedBox(
-                height: 110,
-                width: double.infinity,
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholderImage(),
-                      )
-                    : _placeholderImage(),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholderImage(),
+                          )
+                        : _placeholderImage(),
+                  ],
+                ),
               ),
             ),
-            // Info
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
@@ -647,13 +719,17 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 11),
-                      const SizedBox(width: 3),
-                      Text(
-                        rating > 0 ? rating.toStringAsFixed(1) : 'Baru',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                      // ✅ Memakai Helper Star
+                      _buildStarRating(rating),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          rating > 0 ? '${rating.toStringAsFixed(1)} ($reviews)' : 'Baru',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -675,8 +751,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       ),
     );
   }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
 
   Widget _placeholderImage() {
     return Container(
@@ -721,22 +795,23 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
+  // ✅ DIUBAH AGAR SUPPORT GRIDVIEW (Lebar fix dibuang)
   Widget _buildSkeletonCard() {
     return Container(
-      width: 150, // ✅ tambah width
-      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
             ),
           ),

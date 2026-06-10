@@ -1,8 +1,9 @@
 // ============================================================
-// SELLER PRODUCT PAGE
+// SELLER PRODUCT PAGE - 100% Full Verified (Sales & Ratings)
 // Letakkan file ini di: lib/views/seller/product/product_page.dart
 // ============================================================
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,9 +19,9 @@ import 'package:byteme_digital_marketplace/views/seller/product/add_product.dart
 // ── Import EditProductPage untuk navigasi dari titik tiga ──
 import 'package:byteme_digital_marketplace/views/seller/product/edit_product.dart';
 
-// ============================================================
-// SELLER PRODUCT PAGE
-// ============================================================
+// ── Import ApiService untuk bypass localhost ──
+import 'package:byteme_digital_marketplace/services/api_service.dart';
+
 class SellerProductPage extends StatefulWidget {
   const SellerProductPage({super.key, required void Function() onBackPressed});
 
@@ -29,145 +30,139 @@ class SellerProductPage extends StatefulWidget {
 }
 
 class _SellerProductPageState extends State<SellerProductPage> {
-  // ── WARNA UTAMA (sama dengan seller/home/home_page.dart) ──
+  // ── WARNA UTAMA ──
   static const Color _accentColor = Color(0xFF3D4270);
   static const Color _primaryBlue = Color(0xFF6B7FD7);
-  static const Color _bgColor = Color(0xFFE8E8F0);
+  static const Color _bgColor = Color(0xFFF0F2F8);
 
-  // ── SEARCH ──
-  // Meniru pola _searchController di explore_page.dart
+  // ── SEARCH & LOCAL DATA STATE ──
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _localProducts = [];
+  bool _isLocalLoading = true;
 
-  // _filteredProducts dihitung dari data controller, bukan disimpan lokal
-  List<Map<String, dynamic>> _filteredProducts = [];
-
-  // ──────────────────────────────────────────
-  // LIFECYCLE
-  // Meniru pola initState & dispose di explore_page.dart
-  // ──────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_applyFilter);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ Fetch hanya produk milik seller yang login
-      context.read<ProductController>().fetchMyProducts();
-      _applyFilter();
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
     });
+    
+    _fetchProductsFromLocalBackend();
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_applyFilter);
     _searchController.dispose();
     super.dispose();
   }
 
-  // ──────────────────────────────────────────
-  // FILTER LOGIC — hanya berdasarkan search query (filter tab dihapus)
-  // Meniru pola _applyFilter di explore_page.dart
-  // ──────────────────────────────────────────
-  void _applyFilter() {
-    final allProducts = context.read<ProductController>().products;
-    final query = _searchController.text.toLowerCase();
-
-    setState(() {
-      _filteredProducts = allProducts.where((p) {
-        return (p['title'] as String).toLowerCase().contains(query);
-      }).toList();
-    });
+  // Mengambil data langsung dari backend lokal (Sinkron dengan Dashboard)
+  Future<void> _fetchProductsFromLocalBackend() async {
+    if (!mounted) return;
+    setState(() => _isLocalLoading = true);
+    try {
+      final res = await ApiService.get('/my-produk');
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        final List raw = decoded is List ? decoded : (decoded['data'] ?? []);
+        if (mounted) {
+          setState(() {
+            _localProducts = raw.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
+            _isLocalLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLocalLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLocalLoading = false);
+    }
   }
 
-  void _showComingSoonSnackbar(String page) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('The $page page has not been created yet'),
-        backgroundColor: _primaryBlue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+  // HELPER FORMAT RUPIAH AGAR TAMPILAN CANTIK
+  String _formatRupiah(dynamic rawAmount) {
+    if (rawAmount == null) return 'Rp 0';
+    if (rawAmount.toString().startsWith('Rp')) return rawAmount.toString();
+    
+    double amount = rawAmount is num ? rawAmount.toDouble() : (double.tryParse(rawAmount.toString()) ?? 0.0);
+    if (amount == 0) return 'Rp 0';
+    
+    final str = amount.toStringAsFixed(0);
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(str[i]);
+    }
+    return 'Rp ${buffer.toString()}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProductController>(
+      builder: (context, productController, child) {
+        final allProducts = _localProducts;
+        final query = _searchController.text.toLowerCase();
+        
+        final filteredProducts = allProducts.where((p) {
+          final title = (p['nama_produk'] ?? p['title'] ?? '').toString().toLowerCase();
+          return title.contains(query);
+        }).toList();
+
+        return Scaffold(
+          backgroundColor: _bgColor,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(filteredProducts.length),
+                _buildSearchBar(),
+
+                // ── LIST PRODUK ──
+                Expanded(
+                  child: _isLocalLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF6B7FD7)),
+                        )
+                      : filteredProducts.isEmpty
+                          ? _buildEmptyState()
+                          : RefreshIndicator(
+                              onRefresh: _fetchProductsFromLocalBackend,
+                              color: _primaryBlue,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                                itemCount: filteredProducts.length,
+                                itemBuilder: (context, index) {
+                                  return _buildProductCard(
+                                    filteredProducts[index],
+                                    productController,
+                                  );
+                                },
+                              ),
+                            ),
+                ),
+              ],
+            ),
+          ),
+
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddProductPage()),
+              ).then((_) => _fetchProductsFromLocalBackend());
+            },
+            backgroundColor: _primaryBlue,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add New Product', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        );
+      },
     );
   }
 
-  // ──────────────────────────────────────────
-  // BUILD
-  // ──────────────────────────────────────────
-  @override
-Widget build(BuildContext context) {
-  return Consumer<ProductController>(
-    builder: (context, productController, child) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _applyFilter();
-      });
-
-      return Scaffold(
-        backgroundColor: _bgColor,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-
-              // ── LIST PRODUK ──
-              Expanded(
-                child: productController.isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF6B7FD7),
-                        ),
-                      )
-                    : _filteredProducts.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                            itemCount: _filteredProducts.length,
-                            itemBuilder: (context, index) {
-                              return _buildProductCard(
-                                _filteredProducts[index],
-                                productController,
-                              );
-                            },
-                          ),
-              ),
-            ],
-          ),
-        ),
-
-        // ── TOMBOL TAMBAH PRODUK ──
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AddProductPage(),
-              ),
-            );
-          },
-          backgroundColor: _primaryBlue,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text(
-            'Add New Product',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-
-        floatingActionButtonLocation:
-            FloatingActionButtonLocation.centerFloat,
-      );
-    },
-  );
-}
-
-  // ----------------------------------------------------------
-  // HEADER
-  // Meniru pola _buildHeader di versi sebelumnya
-  // ----------------------------------------------------------
-  Widget _buildHeader() {
+  Widget _buildHeader(int productCount) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       child: Row(
@@ -179,28 +174,16 @@ Widget build(BuildContext context) {
             ),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: _accentColor,
-                size: 20,
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, color: _accentColor, size: 20),
             ),
           ),
           const SizedBox(width: 16),
           const Text(
             'My Products',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: _accentColor,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: _accentColor),
           ),
           const Spacer(),
-          // Badge jumlah produk
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -208,12 +191,8 @@ Widget build(BuildContext context) {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${_filteredProducts.length} Product',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _primaryBlue,
-              ),
+              '$productCount Product',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _primaryBlue),
             ),
           ),
         ],
@@ -221,10 +200,6 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ----------------------------------------------------------
-  // SEARCH BAR
-  // Meniru pola _buildSearchBar di explore_page.dart
-  // ----------------------------------------------------------
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -233,13 +208,7 @@ Widget build(BuildContext context) {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
@@ -251,11 +220,7 @@ Widget build(BuildContext context) {
                 controller: _searchController,
                 decoration: const InputDecoration(
                   hintText: 'Search product',
-                  hintStyle: TextStyle(
-                    color: Color(0xFF9098B1),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  hintStyle: TextStyle(color: Color(0xFF9098B1), fontSize: 14, fontWeight: FontWeight.w400),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
@@ -267,11 +232,7 @@ Widget build(BuildContext context) {
                 onTap: () => _searchController.clear(),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(
-                    Icons.close_rounded,
-                    color: Color(0xFF9098B1),
-                    size: 20,
-                  ),
+                  child: Icon(Icons.close_rounded, color: Color(0xFF9098B1), size: 20),
                 ),
               )
             else
@@ -283,113 +244,93 @@ Widget build(BuildContext context) {
   }
 
   // ----------------------------------------------------------
-  // PRODUCT CARD
-  // Badge status & toggle dihapus, titik tiga hanya Edit & Delete
+  // PRODUCT CARD - REAL DATA WITH RATING CORRECTION
   // ----------------------------------------------------------
-  Widget _buildProductCard(
-    Map<String, dynamic> product,
-    ProductController controller,
-  ) {
+  Widget _buildProductCard(Map<String, dynamic> product, ProductController controller) {
+    final String title = product['nama_produk'] ?? product['title'] ?? '-';
+    final dynamic rawPrice = product['harga'] ?? product['price'] ?? 0;
+    final String? imageUrl = product['file_path'] ?? product['image'];
+
+    // 🌟 SEKARANG SUDAH MENGGUNAKAN KEY REAL DARI LARAVEL WITHAVG
+    final dynamic rawRating = product['reviews_avg_rating'] ?? product['rating'] ?? 0.0;
+    final double rating = rawRating is num ? rawRating.toDouble() : (double.tryParse(rawRating.toString()) ?? 0.0);
+
+    // Menghitung jumlah reviewer asli database
+    final int reviewCount = product['reviews_count'] ?? 0;
+
+    final dynamic rawSales = product['qty_terjual'] ?? product['total_terjual'] ?? product['terjual'] ?? 0;
+    int salesCount = 0;
+    if (rawSales is num) {
+      salesCount = rawSales.toInt();
+    } else {
+      String cleanSales = rawSales.toString().replaceAll(RegExp(r'[^0-9]'), '');
+      salesCount = int.tryParse(cleanSales) ?? 0;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
       child: Row(
         children: [
-          // ── GAMBAR PRODUK ──
-          // Meniru pola Image.asset + errorBuilder di buyer/home/home_page.dart
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: SizedBox(
               width: 80,
               height: 80,
-              child:
-                  product['image'] != null &&
-                      (product['image'] as String).isNotEmpty
-                  ? (product['image'] as String).startsWith('http')
-                        ? Image.network(
-                            product['image'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                          )
-                        : Image.asset(
-                            product['image'] as String,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                          )
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? imageUrl.startsWith('http')
+                      ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imagePlaceholder())
+                      : Image.asset(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imagePlaceholder())
                   : _imagePlaceholder(),
             ),
           ),
           const SizedBox(width: 14),
-
-          // ── INFO PRODUK ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product['title'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF1A1D2E),
-                  ),
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1A1D2E)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  product['price'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: _primaryBlue,
-                  ),
+                  _formatRupiah(rawPrice),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _primaryBlue),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  product['sales'],
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  '$salesCount sales',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7380), fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
-                // Rating bintang
+                
+                // 🌟 BINTANG RATING SEKARANG SUDAH TEMBUS REAL-TIME SINKRON
                 Row(
                   children: [
-                    _buildStarRating(product['rating']),
+                    _buildStarRating(rating),
                     const SizedBox(width: 4),
                     Text(
-                      '${product['rating']}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF9098B1),
-                      ),
+                      '${rating.toStringAsFixed(1)} ($reviewCount)',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF9098B1)),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-
-          // ── KANAN: hanya tombol titik tiga (badge status & toggle dihapus) ──
           GestureDetector(
             onTap: () => _showProductOptions(context, product, controller),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(
-                Icons.more_horiz_rounded,
-                color: Colors.grey.shade400,
-                size: 22,
-              ),
+              child: Icon(Icons.more_horiz_rounded, color: Colors.grey.shade400, size: 22),
             ),
           ),
         ],
@@ -397,10 +338,6 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ----------------------------------------------------------
-  // EMPTY STATE
-  // Meniru pola _buildEmptyState di explore_page.dart
-  // ----------------------------------------------------------
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -408,122 +345,70 @@ Widget build(BuildContext context) {
         children: [
           Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text(
-            'Product not found',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF9098B1),
-            ),
-          ),
+          const Text('Product not found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF9098B1))),
           const SizedBox(height: 8),
-          const Text(
-            'Try changing your search terms',
-            style: TextStyle(fontSize: 13, color: Color(0xFFB0B8CC)),
-          ),
+          const Text('Try changing your search terms', style: TextStyle(fontSize: 13, color: Color(0xFFB0B8CC))),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => _searchController.clear(),
-            child: const Text(
-              'Reset pencarian',
-              style: TextStyle(
-                color: _primaryBlue,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Reset pencarian', style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
   }
 
-  // ----------------------------------------------------------
-  // STAR RATING
-  // Meniru pola _buildStarRating di buyer/home/home_page.dart
-  // ----------------------------------------------------------
   Widget _buildStarRating(double rating) {
     return Row(
       children: List.generate(5, (i) {
         if (i < rating.floor()) {
           return const Icon(Icons.star, color: Color(0xFFFFB800), size: 13);
         } else if (i < rating) {
-          return const Icon(
-            Icons.star_half,
-            color: Color(0xFFFFB800),
-            size: 13,
-          );
+          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 13);
         } else {
-          return const Icon(
-            Icons.star_border,
-            color: Color(0xFFD0D5E8),
-            size: 13,
-          );
+          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 13);
         }
       }),
     );
   }
 
-  // ----------------------------------------------------------
-  // POPUP TITIK TIGA — hanya Edit & Delete (toggle status dihapus)
-  // Meniru pola showModalBottomSheet di versi sebelumnya
-  // ----------------------------------------------------------
-  void _showProductOptions(
-    BuildContext context,
-    Map<String, dynamic> product,
-    ProductController controller,
-  ) {
+  void _showProductOptions(BuildContext context, Map<String, dynamic> product, ProductController controller) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E4F0),
-                borderRadius: BorderRadius.circular(2),
+              height: 40,
+              child: Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE0E4F0), borderRadius: BorderRadius.circular(2))),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Text(
-              product['title'],
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: _accentColor,
-              ),
+              product['nama_produk'] ?? product['title'] ?? 'Product',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _accentColor),
             ),
             const SizedBox(height: 20),
-
-            // ── Edit Product → navigasi ke EditProductPage ──
             _buildOptionButton(
               icon: Icons.edit_rounded,
               label: 'Edit Product',
               color: _primaryBlue,
               onTap: () {
-                Navigator.pop(context); // tutup bottom sheet dulu
-                // Meniru pola Navigator.push di seller/home/home_page.dart
+                Navigator.pop(context); 
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EditProductPage(product: product),
-                  ),
-                );
+                  context, 
+                  MaterialPageRoute(builder: (_) => EditProductPage(product: product))
+                ).then((_) => _fetchProductsFromLocalBackend());
               },
             ),
             const SizedBox(height: 10),
-
-            // ── Delete Product ──
             _buildOptionButton(
               icon: Icons.delete_outline_rounded,
               label: 'Delete Product',
@@ -539,54 +424,30 @@ Widget build(BuildContext context) {
     );
   }
 
-  // ── Dialog konfirmasi hapus ──
-  void _showDeleteConfirmation(
-    BuildContext context,
-    Map<String, dynamic> product,
-    ProductController controller,
-  ) {
+  void _showDeleteConfirmation(BuildContext context, Map<String, dynamic> product, ProductController controller) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Delete Product?',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Product "${product['title']}" will be permanently removed.',
-          style: const TextStyle(color: Color(0xFF9098B1)),
-        ),
+        title: const Text('Delete Product?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Product "${product['nama_produk'] ?? product['title']}" will be permanently removed.', style: const TextStyle(color: Color(0xFF9098B1))),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Batal',
-              style: TextStyle(color: Color(0xFF9098B1)),
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: Color(0xFF9098B1)))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              controller.deleteProduct(product['id'] as String);
+              controller.deleteProduct((product['produk_id'] ?? product['id'] ?? '').toString());
+              _fetchProductsFromLocalBackend();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${product['title']} deleted'),
+                  content: Text('${product['nama_produk'] ?? product['title']} deleted'),
                   backgroundColor: Colors.red,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             child: const Text('Delete'),
           ),
         ],
@@ -597,43 +458,22 @@ Widget build(BuildContext context) {
   Widget _imagePlaceholder() {
     return Container(
       color: const Color(0xFFF0F2F8),
-      child: const Icon(
-        Icons.image_rounded,
-        color: Color(0xFFB0B8CC),
-        size: 32,
-      ),
+      child: const Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 32),
     );
   }
 
-  // ── Helper tombol opsi bottom sheet ──
-  // Meniru pola _buildOptionButton di versi sebelumnya
-  Widget _buildOptionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildOptionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color)),
           ],
         ),
       ),
