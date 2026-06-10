@@ -6,6 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../controller/buyer/cart_controller.dart';
 import '../../../../services/checkout_service.dart'; 
 import '../../../../controller/buyer/order_controller.dart'; 
+import 'package:byteme_digital_marketplace/utils/notif_helper.dart';
+import 'package:byteme_digital_marketplace/services/api_service.dart';
+import 'dart:convert';
 
 class CartPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -18,18 +21,60 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   bool isSelectAll = false;
   List<Map<String, dynamic>> cartItems = [];
+  String? _lastPesananId; // simpan pesanan_id setelah checkout
+  late final AppLifecycleListener _lifecycleListener;
 
   @override
   void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<KeranjangController>().fetchKeranjang();
-    });
+      super.initState();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<KeranjangController>().fetchKeranjang();
+      });
+
+      // Deteksi saat app kembali ke foreground
+      _lifecycleListener = AppLifecycleListener(
+          onResume: _onAppResumed,
+      );
   }
 
   @override
   void dispose() {
-    super.dispose();
+      _lifecycleListener.dispose();
+      super.dispose();
+  }
+
+  // Dipanggil saat user balik ke app (misal dari browser Midtrans)
+  Future<void> _onAppResumed() async {
+      if (_lastPesananId == null) return;
+
+      try {
+          final response = await ApiService.get('/pesanan/$_lastPesananId');
+          if (!mounted) return;
+
+          final data = jsonDecode(response.body);
+          final status = data['status'] as String?;
+
+          if (status == 'paid') {
+              // Refresh keranjang
+              context.read<KeranjangController>().fetchKeranjang();
+              context.read<OrderController>().fetchCurrentOrders();
+
+              NotifHelper.showSuccess(
+                  context,
+                  '🎉 Pembayaran berhasil! Cek email untuk link akses produk.',
+              );
+              _lastPesananId = null; // reset
+          } else if (status == 'cancelled') {
+              NotifHelper.showError(
+                  context,
+                  'Pembayaran dibatalkan atau kadaluarsa.',
+              );
+              _lastPesananId = null;
+          }
+          // Kalau masih 'pending', diam aja — mungkin user belum bayar
+      } catch (_) {
+          // Gagal cek status, diam aja
+      }
   }
 
   int _parsePrice(String priceStr) {
@@ -37,14 +82,16 @@ class _CartPageState extends State<CartPage> {
     return int.tryParse(cleanStr) ?? 0;
   }
 
-  int _calculateTotal() {
-    int total = 0;
-    for (final item in cartItems) {
-      if (item['selected'] == true) {
-        total += _parsePrice(item['price'] as String) * (item['qty'] as int? ?? 1);
+  int _calculateTotal() { 
+      int total = 0;
+      for (final item in cartItems) {
+          if (item['selected'] == true) {
+              final price = _parsePrice(item['price'] as String);
+              final qty = (item['qty'] as num?)?.toInt() ?? 1;
+              total += (price * qty).toInt();
+          }
       }
-    }
-    return total;
+      return total;
   }
 
   String _formatRupiah(int number) {
@@ -518,29 +565,23 @@ class _CartPageState extends State<CartPage> {
                       borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
-                onPressed: () async { 
+                onPressed: () async {
                   final selectedItems = cartItems
                       .where((item) => item['selected'] == true)
                       .toList();
 
                   if (selectedItems.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Choose at least one product to checkout!'),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    );
-                    return;
+                      NotifHelper.showError(context, 'Pilih minimal satu produk untuk checkout!');
+                      return;
                   }
 
+
                   showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF5A72C6)),
-                    ),
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF5A72C6)),
+                      ),
                   );
 
                   final ids = selectedItems
@@ -549,64 +590,40 @@ class _CartPageState extends State<CartPage> {
                       .toList();
 
                   if (ids.isEmpty) {
-                    Navigator.pop(context); 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Item tidak valid. Silakan coba lagi.'),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
+                      Navigator.pop(context);
+                      NotifHelper.showError(context, 'Item tidak valid. Silakan coba lagi.');
+                      return;
                   }
 
-                  // Direct API execution
                   final result = await CheckoutService.checkout(detailKeranjangIds: ids);
-                  
+
                   if (!mounted) return;
-                  Navigator.pop(context); // Close loading dialog
+                  Navigator.pop(context); // tutup loading
 
                   if (!result.success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result.message),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
+                      NotifHelper.showError(context, result.message);
+                      return;
                   }
 
-                  // Fetch updated current orders via OrderController
+                  // Simpan pesanan_id untuk dicek saat balik dari browser
+                  _lastPesananId = result.pesananId; // ← tambahkan field ini di CheckoutResult
+
                   context.read<OrderController>().fetchCurrentOrders();
 
-                  // Open Midtrans checkout URL using url_launcher
                   final url = result.redirectUrl;
                   if (url != null && await canLaunchUrl(Uri.parse(url))) {
-                    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                    
-                    if (mounted) {
-                      // Navigate automatically back to the home screen
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Selesaikan pembayaran di browser. Email akses produk akan dikirim setelah pembayaran dikonfirmasi.'),
-                          duration: Duration(seconds: 6),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
+                      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+                      if (mounted) {
+                          NotifHelper.showInfo(
+                              context,
+                              'Selesaikan pembayaran di browser. Kami akan otomatis mengecek statusnya saat kamu kembali.',
+                          );
+                      }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Tidak dapat membuka halaman pembayaran: $url'),
-                        backgroundColor: Colors.redAccent,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                      NotifHelper.showError(context, 'Tidak dapat membuka halaman pembayaran.');
                   }
-                },
+              },
                 child: const Text(
                   'Checkout',
                   style: TextStyle(

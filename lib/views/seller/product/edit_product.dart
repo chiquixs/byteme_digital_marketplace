@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart';
+import 'package:byteme_digital_marketplace/utils/notif_helper.dart';
 import 'package:byteme_digital_marketplace/services/api_service.dart';
 
 class EditProductPage extends StatefulWidget {
