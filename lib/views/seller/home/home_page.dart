@@ -481,9 +481,11 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Available for Withdraw',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                  Text(
+                    _totalBalance < 50000
+                        ? 'Minimum withdraw Rp 50.000'
+                        : 'Available for Withdraw',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   _availableWithdraw == 0
@@ -505,21 +507,22 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                         ),
                 ],
               ),
-              ElevatedButton(
-                onPressed: widget.onWithdrawPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF3D4270),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              if (_totalBalance >= 50000)
+                ElevatedButton(
+                  onPressed: widget.onWithdrawPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF3D4270),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
+                  child: const Text(
+                    'Withdraw',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
-                child: const Text(
-                  'Withdraw',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
             ],
           ),
         ],

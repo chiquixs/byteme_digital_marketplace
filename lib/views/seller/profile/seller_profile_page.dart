@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
-// Pastikan kamu mengimpor file edit profile yang akan kita buat di bawah
 import 'package:byteme_digital_marketplace/views/seller/profile/edit_profile_page.dart';
 
-class SellerProfilePage extends StatelessWidget {
+class SellerProfilePage extends StatefulWidget {
   const SellerProfilePage({super.key});
+
+  @override
+  State<SellerProfilePage> createState() => _SellerProfilePageState();
+}
+
+class _SellerProfilePageState extends State<SellerProfilePage> {
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +38,8 @@ class SellerProfilePage extends StatelessWidget {
               ),
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   child: Column(
                     children: [
                       Row(
@@ -70,7 +76,8 @@ class SellerProfilePage extends StatelessWidget {
           // ── MENU LIST ──
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -83,26 +90,26 @@ class SellerProfilePage extends StatelessWidget {
                       subLabel: userController.displayName.isEmpty
                           ? userController.username
                           : userController.displayName,
-                      showChevron: false, // Ikon > dihilangkan
+                      showChevron: false,
                     ),
                     _buildMenuItem(
                       icon: Icons.account_balance_wallet_outlined,
                       label: 'Bank Account',
                       subLabel: 'BCA - Bank Central Asia',
-                      showChevron: false, // Ikon > dihilangkan
+                      showChevron: false,
                     ),
                     _buildMenuItem(
                       icon: Icons.alternate_email_rounded,
                       label: 'Email Address',
                       subLabel: userController.email,
-                      showChevron: false, // Ikon > dihilangkan
+                      showChevron: false,
                     ),
                     _buildMenuItem(
                       icon: Icons.vpn_key_outlined,
                       label: 'Password',
                       subLabel: '••••••••••••',
                       isLast: true,
-                      showChevron: false, // Ikon > dihilangkan
+                      showChevron: false,
                     ),
                   ]),
                   const SizedBox(height: 24),
@@ -145,7 +152,8 @@ class SellerProfilePage extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 35,
-                      backgroundColor: const Color(0xFF6B7FD7).withOpacity(0.1),
+                      backgroundColor:
+                          const Color(0xFF6B7FD7).withOpacity(0.1),
                       backgroundImage: user.profileImagePath != null
                           ? FileImage(File(user.profileImagePath!))
                               as ImageProvider
@@ -204,41 +212,22 @@ class SellerProfilePage extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                    MaterialPageRoute(
+                        builder: (context) => const EditProfilePage()),
                   );
                 },
-                icon: const Icon(Icons.edit_note_rounded, 
+                icon: const Icon(Icons.edit_note_rounded,
                     color: Color(0xFF3D4270), size: 28),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const Divider(height: 1),
-          const SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildSimpleStat('Member Since', 'Nov 2, 2026'),
-              _buildSimpleStat('Total Sales', '167'),
-            ],
-          ),
+
         ],
       ),
     );
   }
 
-  Widget _buildSimpleStat(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-      ],
-    );
-  }
 
-  // ----------------------------------------------------------
   // MENU HELPERS
   // ----------------------------------------------------------
   Widget _buildSectionLabel(String label) {
@@ -273,7 +262,7 @@ class SellerProfilePage extends StatelessWidget {
     required String label,
     required String subLabel,
     bool isLast = false,
-    bool showChevron = true, // Tambahkan parameter ini
+    bool showChevron = true,
     VoidCallback? onTap,
   }) {
     return Column(
@@ -296,9 +285,9 @@ class SellerProfilePage extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87)),
-          trailing: showChevron 
+          trailing: showChevron
               ? const Icon(Icons.chevron_right_rounded, color: Colors.grey)
-              : null, // Jika false, trailing dikosongkan
+              : null,
           onTap: onTap,
         ),
         if (!isLast)
@@ -311,7 +300,7 @@ class SellerProfilePage extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // LOGOUT BUTTON & DIALOG (SAMA SEPERTI SEBELUMNYA)
+  // LOGOUT BUTTON & DIALOG
   // ----------------------------------------------------------
   Widget _buildLogoutButton(BuildContext context) {
     return GestureDetector(
@@ -344,7 +333,8 @@ class SellerProfilePage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFFF4D67))),
                   Text('Logout from this account',
-                      style: TextStyle(fontSize: 12, color: Color(0xFFFF8090))),
+                      style:
+                          TextStyle(fontSize: 12, color: Color(0xFFFF8090))),
                 ],
               ),
             ),
@@ -362,7 +352,9 @@ class SellerProfilePage extends StatelessWidget {
         title: const Text("Log Out?"),
         content: const Text("Are you sure you want to log out?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel")),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -372,7 +364,8 @@ class SellerProfilePage extends StatelessWidget {
                 (route) => false,
               );
             },
-            child: const Text("Log Out", style: TextStyle(color: Colors.red)),
+            child:
+                const Text("Log Out", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
