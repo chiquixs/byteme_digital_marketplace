@@ -472,6 +472,29 @@ class _AddProductPageState extends State<AddProductPage>
                 return null;
               },
             ),
+            const SizedBox(height: 8),
+            // Keterangan Pemotongan Harga 11%
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: Color(0xFF9098B1),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Note: An 11% admin and service fee will be deducted from this price for every successful transaction.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF9098B1),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // ── 5. KATEGORI ──────────────────────────────────────────────
