@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:byteme_digital_marketplace/services/api_service.dart';
 import '../product/product_detail_page.dart';
 import '../../../utils/buyer/cart_manager.dart';
 import 'package:provider/provider.dart';
@@ -19,18 +21,8 @@ class ExplorePage extends StatefulWidget {
 }
 
 class _ExplorePageState extends State<ExplorePage> {
-  static const List<String> _categoryOptions = [
-    'E-Book',
-    'Canva Template',
-    'Excel Template',
-    'UI/UX',
-    'PDF Template',
-    'Font',
-    'Kursus',
-    'Software',
-    'Audio / Music',
-    'NFT',
-  ];
+  List<Map<String, dynamic>> _categoryOptions = [];
+  bool _isLoadingCategories = false;
 
   static const List<Map<String, dynamic>> _priceRangeOptions = [
     {'label': '< Rp 50.000', 'min': 0, 'max': 49999},
@@ -48,37 +40,53 @@ class _ExplorePageState extends State<ExplorePage> {
   String? _appliedPriceRange;
   int? _appliedRating;
 
-  // ✅ Getter _filteredProducts — filter langsung dari ProductController
+  // FIX 1: Tambah .trim() di semua return value
+  String _getCategoryName(Map<String, dynamic> product) {
+    if (product['kategori'] is Map) {
+      return (product['kategori']['nama'] ?? '').toString().trim();
+    } else if (product['category'] is Map) {
+      return (product['category']['nama'] ?? '').toString().trim();
+    }
+    return (product['nama_kategori'] ?? product['kategori'] ?? product['category'] ?? '').toString().trim();
+  }
+
   List<Map<String, dynamic>> get _filteredProducts {
     final allProducts = context.read<ProductController>().products;
     final query = _searchController.text.toLowerCase();
 
     return allProducts.where((product) {
-      // Filter search
-      final title = (product['title'] ?? '').toString().toLowerCase();
-      if (query.isNotEmpty && !title.contains(query)) return false;
+      final categoryName = _getCategoryName(product).toLowerCase();
+      final title = (product['title'] ?? product['nama_produk'] ?? product['name'] ?? '').toString().toLowerCase();
 
-      // Filter kategori
-      if (_appliedCategories.isNotEmpty) {
-        final category = (product['category'] ?? '').toString();
-        if (!_appliedCategories.contains(category)) return false;
+      if (query.isNotEmpty && !title.contains(query) && !categoryName.contains(query)) {
+        return false;
       }
 
-      // Filter harga — pakai field 'harga' (angka asli dari API)
+      if (_appliedCategories.isNotEmpty) {
+        // FIX 2: Tambah .trim().toLowerCase() di kedua sisi compare
+        final isMatch = _appliedCategories.any(
+          (appliedCat) => appliedCat.trim().toLowerCase() == categoryName.trim().toLowerCase(),
+        );
+        if (!isMatch) return false;
+      }
+
       if (_appliedPriceRange != null) {
         final priceRange = _priceRangeOptions.firstWhere(
           (r) => r['label'] == _appliedPriceRange,
           orElse: () => {'min': 0, 'max': 999999},
         );
-        final rawPrice = product['harga'] ?? 0;
-        final priceNum = (rawPrice is num) ? rawPrice.toInt() : 0;
-        if (priceNum < priceRange['min'] || priceNum > priceRange['max'])
+        final rawPrice = product['harga'] ?? product['price'] ?? 0;
+        // FIX 3: Strip karakter non-angka (misal "Rp 50.000") sebelum parse
+        final priceNum = (rawPrice is num)
+            ? rawPrice.toInt()
+            : (int.tryParse(rawPrice.toString().replaceAll(RegExp(r'[^0-9]'), '')) ?? 0);
+        if (priceNum < priceRange['min'] || priceNum > priceRange['max']) {
           return false;
+        }
       }
 
-      // Filter rating
       if (_appliedRating != null) {
-        final rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
+        final rating = _parseRating(product);
         if (rating < _appliedRating!) return false;
       }
 
@@ -90,6 +98,7 @@ class _ExplorePageState extends State<ExplorePage> {
   void initState() {
     super.initState();
     _searchController.addListener(_applyFilter);
+    _fetchCategories();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductController>().fetchProducts();
     });
@@ -100,6 +109,22 @@ class _ExplorePageState extends State<ExplorePage> {
     _searchController.removeListener(_applyFilter);
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final response = await ApiService.get('/kategori');
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          _categoryOptions = data.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetch kategori: $e');
+    }
+    if (mounted) setState(() => _isLoadingCategories = false);
   }
 
   void _applyFilter() {
@@ -212,7 +237,6 @@ class _ExplorePageState extends State<ExplorePage> {
                   ),
                 ),
 
-                // Loading indicator
                 if (productController.isLoading)
                   const SliverToBoxAdapter(
                     child: SizedBox(
@@ -237,7 +261,7 @@ class _ExplorePageState extends State<ExplorePage> {
                               mainAxisSpacing: 14,
                               childAspectRatio: widget.isSellerView
                                   ? 0.75
-                                  : 0.7,
+                                  : 0.70,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _buildProductCard(
@@ -449,6 +473,7 @@ class _ExplorePageState extends State<ExplorePage> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _FilterSheet(
         categoryOptions: _categoryOptions,
+        isLoadingCategories: _isLoadingCategories,
         priceRangeOptions: _priceRangeOptions,
         initialCategories: _tempSelectedCategories,
         initialPriceRange: _tempSelectedPriceRange,
@@ -471,7 +496,6 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  // --- LOGIC RATING YANG DITAMBAHKAN ---
   double _parseRating(Map<String, dynamic> product) {
     return double.tryParse((product['reviews_avg_rating'] ?? product['rating'] ?? '0.0').toString()) ?? 0.0;
   }
@@ -481,7 +505,6 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
-    // 🌟 Mengambil rating dan ulasan dengan aman
     final double rating = _parseRating(product);
     final int reviews = _parseReviews(product);
 
@@ -518,7 +541,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _buildProductImage(product['image']),
+                    _buildProductImage(product['image'] ?? product['gambar'] ?? product['file_path']),
                     Positioned(
                       top: 8,
                       left: 8,
@@ -532,7 +555,7 @@ class _ExplorePageState extends State<ExplorePage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          product['category'] ?? '',
+                          _getCategoryName(product),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 9,
@@ -552,7 +575,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['title'] ?? '',
+                    product['title'] ?? product['nama_produk'] ?? product['name'] ?? '',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -568,7 +591,6 @@ class _ExplorePageState extends State<ExplorePage> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          // Menampilkan rata-rata dan jumlah ulasan
                           rating > 0 ? '${rating.toStringAsFixed(1)} ($reviews reviews)' : 'Baru',
                           style: const TextStyle(
                             fontSize: 10,
@@ -581,7 +603,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product['price'] ?? 'Rp 0',
+                    product['price'] ?? product['harga']?.toString() ?? 'Rp 0',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -596,7 +618,7 @@ class _ExplorePageState extends State<ExplorePage> {
                         onPressed: () async {
                           final bool added = await context
                               .read<KeranjangController>()
-                              .addToCart(product);
+                              .addToCart(product) ?? false;
 
                           if (!context.mounted) return;
 
@@ -604,7 +626,7 @@ class _ExplorePageState extends State<ExplorePage> {
                             SnackBar(
                               content: Text(
                                 added
-                                    ? '${product['title']} ditambahkan!'
+                                    ? '${product['title'] ?? product['nama_produk'] ?? 'Produk'} ditambahkan!'
                                     : 'Sudah ada di keranjang',
                               ),
                               backgroundColor: added
@@ -720,7 +742,8 @@ class _ExplorePageState extends State<ExplorePage> {
 // FILTER SHEET
 // ============================================================
 class _FilterSheet extends StatefulWidget {
-  final List<String> categoryOptions;
+  final List<Map<String, dynamic>> categoryOptions;
+  final bool isLoadingCategories;
   final List<Map<String, dynamic>> priceRangeOptions;
   final Set<String> initialCategories;
   final String? initialPriceRange;
@@ -731,6 +754,7 @@ class _FilterSheet extends StatefulWidget {
 
   const _FilterSheet({
     required this.categoryOptions,
+    required this.isLoadingCategories,
     required this.priceRangeOptions,
     required this.initialCategories,
     required this.initialPriceRange,
@@ -841,52 +865,62 @@ class _FilterSheetState extends State<_FilterSheet> {
                   children: [
                     _buildSectionLabel('Kategori'),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: widget.categoryOptions.map((cat) {
-                        final bool isSelected = _selectedCategories.contains(
-                          cat,
-                        );
-                        return GestureDetector(
-                          onTap: () => setState(() {
-                            if (isSelected) {
-                              _selectedCategories.remove(cat);
-                            } else {
-                              _selectedCategories.add(cat);
-                            }
-                          }),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF6B7FD7)
-                                  : Colors.transparent,
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF6B7FD7)
-                                    : const Color(0xFFD0D5E8),
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              cat,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF6B7FD7),
+                    widget.isLoadingCategories
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF6B7FD7),
                               ),
                             ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: widget.categoryOptions.map((catMap) {
+                              // FIX 1: Trim nama kategori dari backend
+                              final cat = catMap['nama'].toString().trim();
+                              final bool isSelected = _selectedCategories.contains(cat);
+
+                              return GestureDetector(
+                                onTap: () => setState(() {
+                                  if (isSelected) {
+                                    _selectedCategories.remove(cat);
+                                  } else {
+                                    _selectedCategories.add(cat);
+                                  }
+                                }),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 7,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFF6B7FD7)
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF6B7FD7)
+                                          : const Color(0xFFD0D5E8),
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    cat,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : const Color(0xFF6B7FD7),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        );
-                      }).toList(),
-                    ),
                     const SizedBox(height: 20),
                     const Divider(color: Color(0xFFF0F2F8), thickness: 1),
                     const SizedBox(height: 16),

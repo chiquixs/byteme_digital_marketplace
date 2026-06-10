@@ -62,36 +62,63 @@ class KeranjangController extends ChangeNotifier {
 
   // Hapus item dari keranjang via API
   Future<void> removeFromCart(String detailKeranjangId) async {
-  try {
-    await ApiService.delete('/keranjang/$detailKeranjangId');
-    _items.removeWhere((item) => item['detail_keranjang_id'] == detailKeranjangId);
-    notifyListeners();
-  } catch (e) {
-    debugPrint('Error removeFromCart: $e');
+    try {
+      await ApiService.delete('/keranjang/$detailKeranjangId');
+      _items.removeWhere(
+        (item) => item['detail_keranjang_id'] == detailKeranjangId,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error removeFromCart: $e');
+    }
   }
-}
+
+  // Fungsi khusus dan aman untuk mengambil nama toko (username seller)
+  String _extractStoreName(Map<String, dynamic> raw) {
+    try {
+      final produk = raw['produk'];
+      if (produk != null && produk is Map) {
+        // Cek relasi user
+        if (produk['user'] != null && produk['user'] is Map) {
+          if (produk['user']['username'] != null) {
+            return produk['user']['username'].toString();
+          }
+        }
+        // Fallback jika menggunakan relasi seller
+        if (produk['seller'] != null && produk['seller'] is Map) {
+          if (produk['seller']['username'] != null) {
+            return produk['seller']['username'].toString();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error extract store name: $e');
+    }
+    return 'Official Store';
+  }
 
   // Mapping response API ke format yang dipakai UI
   Map<String, dynamic> _mapItem(Map<String, dynamic> raw) {
     final produk = raw['produk'] ?? {};
     return {
       'detail_keranjang_id': raw['detail_keranjang_id'] ?? '',
-      'produk_id'          : raw['produk_id'] ?? produk['produk_id'] ?? '',
-      'name'               : produk['nama_produk'] ?? raw['nama_produk'] ?? '',
-      'price'              : _formatPrice(produk['harga'] ?? raw['harga_satuan']),
-      'harga'              : produk['harga'] ?? raw['harga_satuan'] ?? 0,
-      'image'              : produk['file_path'] ?? '',
-      'category'           : _extractCategory(produk),
-      'store'              : produk['seller']?['username'] ?? 'Official Store',
-      'qty'                : raw['jumlah'] ?? 1,
-      'selected'           : false,
+      'produk_id': raw['produk_id'] ?? produk['produk_id'] ?? '',
+      'name': produk['nama_produk'] ?? raw['nama_produk'] ?? '',
+      'price': _formatPrice(produk['harga'] ?? raw['harga_satuan']),
+      'harga': produk['harga'] ?? raw['harga_satuan'] ?? 0,
+      'image': produk['file_path'] ?? '',
+      'category': _extractCategory(produk),
+      'store': _extractStoreName(raw), // Menggunakan fungsi extract yang lebih aman
+      'qty': raw['jumlah'] ?? 1,
+      'selected': false,
     };
   }
 
   String _formatPrice(dynamic harga) {
     if (harga == null) return 'Rp 0';
     if (harga is String && harga.startsWith('Rp')) return harga;
-    final number = (harga is num ? harga : num.tryParse(harga.toString()) ?? 0).toInt();
+    final number = (harga is num ? harga : num.tryParse(harga.toString()) ?? 0)
+        .toInt();
     final formatted = number.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (m) => '${m[1]}.',

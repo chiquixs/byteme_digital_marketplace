@@ -165,7 +165,7 @@ class _CartPageState extends State<CartPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // ✅ Cancel hanya tutup dialog
+                  // Cancel hanya tutup dialog
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
@@ -176,7 +176,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // ✅ Remove yang hapus item
+                  // Remove yang hapus item
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade400,
@@ -355,12 +355,17 @@ class _CartPageState extends State<CartPage> {
               const Icon(Icons.storefront_outlined,
                   size: 16, color: Color(0xFF3D4270)),
               const SizedBox(width: 6),
-              Text(
-                item['store'] as String? ?? 'Official Store',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF3D4270)),
+              // Menambahkan Expanded agar jika nama toko/username panjang, teksnya tidak error overflow
+              Expanded(
+                child: Text(
+                  item['store'] as String? ?? 'Official Store',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3D4270)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -407,7 +412,7 @@ class _CartPageState extends State<CartPage> {
                 ),
                 const SizedBox(width: 12),
 
-                // ✅ Support URL dari API dan asset lokal
+                // Support URL dari API dan asset lokal
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: SizedBox(
@@ -569,6 +574,7 @@ class _CartPageState extends State<CartPage> {
                       NotifHelper.showError(context, 'Pilih minimal satu produk untuk checkout!');
                       return;
                   }
+
 
                   showDialog(
                       context: context,
