@@ -4,7 +4,7 @@ import '../../../services/review_service.dart';
 import '../../../utils/buyer/cart_manager.dart';
 
 // ============================================================
-// PRODUCT DETAIL PAGE - No Dummy Seller Data Version
+// PRODUCT DETAIL PAGE - Single Image & Fit Contain
 // ============================================================
 
 class ProductDetailPage extends StatefulWidget {
@@ -27,15 +27,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   bool _isLoadingReviews = false;
 
   String get _produkId => widget.product['id']?.toString() ?? widget.product['produk_id']?.toString() ?? '';
-  final PageController _imageController = PageController();
-  int _currentImage = 0;
   bool _isWishlisted = false;
   bool _isDescriptionExpanded = false;
   final _wm = WishlistManager.instance;
 
-  List<String> get _images {
+  // Hanya mengambil 1 gambar utama
+  String get _mainImage {
     final img = widget.product['image'] ?? widget.product['file_path'] ?? 'assets/images/e-book.jpeg';
-    return [img.toString(), img.toString(), img.toString()];
+    return img.toString();
   }
 
   @override
@@ -77,15 +76,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Widget _buildReviewsList() {
     if (_isLoadingReviews) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B7FD7)),
+      ));
     }
 
     if (_reviews.isEmpty) {
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          'Belum ada teks ulasan untuk produk ini.',
-          style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+          'No reviews yet for this product.',
+          style: TextStyle(fontSize: 13, color: Colors.grey, fontStyle: FontStyle.italic),
         ),
       );
     }
@@ -101,8 +103,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           final String commentText = r['komentar'] ?? '';
 
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: const Color(0xFFF8F9FD),
               borderRadius: BorderRadius.circular(12),
@@ -114,19 +116,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(reviewerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                    Row(
-                      children: List.generate(5, (i) => Icon(
-                        i < starCount ? Icons.star_rounded : Icons.star_border_rounded,
-                        size: 12,
-                        color: i < starCount ? Colors.amber : Colors.grey.shade300,
-                      )),
-                    ),
+                    Text(reviewerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    _buildYellowStarRating(starCount.toDouble()),
                   ],
                 ),
                 if (commentText.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(commentText, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                  const SizedBox(height: 6),
+                  Text(commentText, style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4)),
                 ],
               ],
             ),
@@ -139,7 +135,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void dispose() {
     _wm.removeListener(_onWishlistChanged);
-    _imageController.dispose();
     super.dispose();
   }
 
@@ -159,25 +154,36 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ? _summary['total']
         : (product['reviews_count'] ?? product['reviews'] ?? 0);
 
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF0F2F8), 
       body: Stack(
         children: [
           CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(child: _buildImageCarousel()),
+              // 1. BAGIAN GAMBAR
+              SliverToBoxAdapter(
+                child: _buildImageSection(context),
+              ),
+
+              // 2. BAGIAN DETAIL KONTEN
               SliverToBoxAdapter(
                 child: Container(
-                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. JUDUL & HARGA
+                      // JUDUL & HARGA
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                            child: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A1D2E))),
                           ),
                           const SizedBox(width: 10),
                           Text(
@@ -186,83 +192,108 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       
-                      // 2. RATINGS ROW
+                      // RATINGS ROW
                       Row(
                         children: [
-                          _buildStarRating(currentRating),
+                          _buildYellowStarRating(currentRating),
                           const SizedBox(width: 8),
-                          Text('$currentRating ($currentTotalReviews Ulasan)', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                          Text(
+                            '${currentRating.toStringAsFixed(1)} ($currentTotalReviews Reviews)', 
+                            style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w600)
+                          ),
                         ],
                       ),
 
-                      const SizedBox(height: 20),
-                      const Divider(thickness: 1),
+                      const SizedBox(height: 24),
+                      const Divider(thickness: 1, color: Color(0xFFEEF0F7)),
+                      const SizedBox(height: 16),
 
-                      // 3. SEKSI ULASAN PEMBELI 
-                      const Text('Ulasan Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      // SEKSI ULASAN PEMBELI
+                      const Text('Recent Reviews', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1D2E))),
+                      const SizedBox(height: 8),
                       _buildReviewsList(),
 
-                      const SizedBox(height: 20),
-                      const Divider(thickness: 1),
+                      const SizedBox(height: 16),
+                      const Divider(thickness: 1, color: Color(0xFFEEF0F7)),
+                      const SizedBox(height: 16),
 
-                      // 4. DESKRIPSI PRODUK
+                      // DESKRIPSI PRODUK
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1D2E))),
                           if (!widget.isSellerView)
                             IconButton(
-                              icon: Icon(_isWishlisted ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                              icon: Icon(_isWishlisted ? Icons.favorite : Icons.favorite_border, color: const Color(0xFFFF4D67)),
                               onPressed: () => _wm.toggle(product),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         product['deskripsi'] ?? product['description'] ?? _dummyDescription,
-                        style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                        style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.6),
                         maxLines: _isDescriptionExpanded ? null : 3,
                       ),
+                      const SizedBox(height: 4),
                       GestureDetector(
                         onTap: () => setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
-                        child: Text(_isDescriptionExpanded ? 'Show less' : 'Read more >', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
+                        child: Text(
+                          _isDescriptionExpanded ? 'Show less' : 'Read more >', 
+                          style: const TextStyle(color: Color(0xFF6B7FD7), fontWeight: FontWeight.bold, fontSize: 13)
+                        ),
                       ),
 
+                      const SizedBox(height: 24),
+                      const Divider(thickness: 1, color: Color(0xFFEEF0F7)),
                       const SizedBox(height: 20),
-                      const Divider(thickness: 1),
 
-                      // 5. SEKSI SELLER (SUDAH FIX DINAMIS ASLI DATABASE)
+                      // SEKSI SELLER 
                       _buildSellerInfo(product),
                       
-                      const SizedBox(height: 120), 
+                      // Ruang ekstra di bawah agar konten tidak tertutup tombol Add to Cart
+                      SizedBox(height: 100 + bottomPadding), 
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          Positioned(
-            top: 40,
-            left: 16,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
-            ),
-          ),
+
+          // ── TOMBOL ADD TO CART YANG AMAN ──
           if (!widget.isSellerView)
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.all(20),
-                color: Colors.white,
+                padding: EdgeInsets.only(
+                  left: 24, 
+                  right: 24, 
+                  top: 16, 
+                  bottom: bottomPadding > 0 ? bottomPadding + 12 : 24,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, -10),
+                    )
+                  ],
+                ),
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B7FD7), padding: const EdgeInsets.all(16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B7FD7), 
+                    padding: const EdgeInsets.symmetric(vertical: 16), 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
                   onPressed: () => _showAddedToCartNotification(context, product),
-                  child: const Text('Add to Cart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text('Add to Cart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ),
@@ -271,37 +302,95 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  void _showAddedToCartNotification(BuildContext context, Map<String, dynamic> product) {
-    CartManager.instance.addToCart(product);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Cart!'), behavior: SnackBarBehavior.floating));
-  }
+  // 🌟 BAGIAN GAMBAR TUNGGAL (TIDAK ADA SLIDER & PROPORSIONAL) 🌟
+  Widget _buildImageSection(BuildContext context) {
+    final img = _mainImage;
 
-  Widget _buildImageCarousel() {
-    return Container(
-      height: 250,
-      width: double.infinity,
-      child: PageView.builder(
-        itemCount: _images.length,
-        onPageChanged: (i) => setState(() => _currentImage = i),
-        itemBuilder: (context, index) {
-          final img = _images[index];
-          return img.startsWith('http') 
-            ? Image.network(img, fit: BoxFit.cover) 
-            : Image.asset(img, fit: BoxFit.cover);
-        },
+    return Padding(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 16, 
+        left: 0, right: 0, bottom: 24
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tombol Back
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
+                  ]
+                ),
+                child: const Icon(Icons.arrow_back, color: Color(0xFF1A1D2E), size: 20),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Container Gambar Utama
+          Container(
+            height: 320,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8EAF2), // Background abu-abu sebagai pelindung/bingkai poster
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), 
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))
+              ]
+            ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              child: img.startsWith('http') 
+                ? Image.network(
+                    img, 
+                    fit: BoxFit.contain, // 🌟 Mencegah gambar terpotong/zoom
+                    errorBuilder: (_, __, ___) => _buildImagePlaceholder()
+                  ) 
+                : Image.asset(
+                    img, 
+                    fit: BoxFit.contain, // 🌟 Mencegah gambar terpotong/zoom
+                    errorBuilder: (_, __, ___) => _buildImagePlaceholder()
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ── 🌟 WIDGET SELLER DINAMIS TANPA DATA JEFRI NICHOL 🌟 ──
+  Widget _buildImagePlaceholder() {
+    return Container(
+      color: const Color(0xFFF0F2F8),
+      child: const Center(
+        child: Icon(Icons.image_rounded, color: Color(0xFFB0B8CC), size: 48),
+      ),
+    );
+  }
+
+  void _showAddedToCartNotification(BuildContext context, Map<String, dynamic> product) {
+    CartManager.instance.addToCart(product);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Added to Cart!'), 
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: const Color(0xFF6B7FD7),
+      )
+    );
+  }
+
   Widget _buildSellerInfo(Map<String, dynamic> product) {
     final dynamic userObj = product['user'];
-    
-    // Logika Sapu Jagat menyaring nama seller asli dari database Supabase kelompok kalian
     final String sellerName = userObj is Map 
         ? (userObj['username'] ?? userObj['name'] ?? 'Penjual ByteMe')
         : (product['seller_name'] ?? product['username'] ?? product['store_name'] ?? product['nama_toko'] ?? 'Penjual ByteMe');
-    
     final String sellerAvatar = userObj is Map
         ? (userObj['profile_image'] ?? userObj['avatar'] ?? '').toString()
         : (product['seller_avatar'] ?? product['avatar'] ?? '').toString();
@@ -342,7 +431,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  Widget _buildStarRating(double rating) {
+  Widget _buildYellowStarRating(double rating) {
     return Row(
       children: List.generate(5, (i) => Icon(
         i < rating.floor() ? Icons.star_rounded : Icons.star_border_rounded,

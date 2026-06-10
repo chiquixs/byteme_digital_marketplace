@@ -1,9 +1,5 @@
-// ============================================================
-// SELLER HOME PAGE - Fixed Dashboard Analytics Version
-// Letakkan file ini di: lib/views/seller/home/seller_home_page.dart
-// ============================================================
-
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -189,7 +185,6 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         setState(() {
           _totalProducts = myProducts.length;
           
-          // 🌟 LIVE FIXED: Sekarang qty_terjual ditaruh di depan agar terbaca dari Laravel
           _totalSales = myProducts.fold(
             0,
             (sum, p) {
@@ -220,6 +215,65 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       buffer.write(str[i]);
     }
     return 'Rp ${buffer.toString()}';
+  }
+
+  // ✅ FUNGSI BANTU RATING DARI BERANDA BUYER
+  double _parseRating(Map<String, dynamic> product) {
+    final possibleKeys = [
+      'reviews_avg_rating',
+      'rating',
+      'rata_rata',
+      'review_avg_rating'
+    ];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+      if (val != null) {
+        if (val is num) return val.toDouble();
+
+        if (val is String) {
+          final cleanVal = val.replaceAll(RegExp(r'[^0-9.]'), '');
+          final parsed = double.tryParse(cleanVal);
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0.0;
+  }
+
+  int _parseReviews(Map<String, dynamic> product) {
+    final possibleKeys = ['reviews_count', 'reviews', 'total_reviews'];
+
+    for (String key in possibleKeys) {
+      final val = product[key];
+
+      if (val != null) {
+        if (val is num) return val.toInt();
+
+        if (val is String) {
+          final parsed =
+              int.tryParse(val.replaceAll(RegExp(r'[^0-9]'), ''));
+          if (parsed != null) return parsed;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  Widget _buildStarRating(double rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        if (i < rating.floor()) {
+          return const Icon(Icons.star, color: Color(0xFFFFB800), size: 12);
+        } else if (i < rating) {
+          return const Icon(Icons.star_half, color: Color(0xFFFFB800), size: 12);
+        } else {
+          return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 12);
+        }
+      }),
+    );
   }
 
   @override
@@ -524,15 +578,20 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
+  // ✅ DIGANTI MENJADI GRIDVIEW AGAR SCROLL KE BAWAH
   Widget _buildProductSection() {
     if (_isLoading) {
-      return SizedBox(
-        height: 200,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: 3,
-          itemBuilder: (_, __) => _buildSkeletonCard(),
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 0.9, 
         ),
+        itemCount: 4,
+        itemBuilder: (_, __) => _buildSkeletonCard(),
       );
     }
 
@@ -552,16 +611,20 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
       );
     }
 
-    final preview = _products.take(5).toList();
+    final preview = _products.take(6).toList(); // Ku ganti 6 biar seimbang kotaknya
 
-    return SizedBox(
-      height: 220,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: preview.length,
-        itemBuilder: (context, index) =>
-            _buildProductCard(context, preview[index]),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 0.75, 
       ),
+      itemCount: preview.length,
+      itemBuilder: (context, index) =>
+          _buildProductCard(context, preview[index]),
     );
   }
 
@@ -575,7 +638,11 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     final double price = rawPrice is num
         ? rawPrice.toDouble()
         : double.tryParse(rawPrice.toString()) ?? 0.0;
-    final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
+        
+    // ✅ Memanggil fungsi parse yang sudah dibuat di atas
+    final double rating = _parseRating(product);
+    final int reviews = _parseReviews(product);
+    
     final String? imageUrl =
         product['file_path'] ??
         product['gambar'] ??
@@ -601,8 +668,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         );
       },
       child: Container(
-        width: 150,
-        margin: const EdgeInsets.only(right: 12),
+        // Lebar & Margin dihilangkan karena GridView yang akan mengaturnya
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -617,20 +683,23 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: SizedBox(
-                height: 110,
-                width: double.infinity,
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholderImage(),
-                      )
-                    : _placeholderImage(),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholderImage(),
+                          )
+                        : _placeholderImage(),
+                  ],
+                ),
               ),
             ),
             Padding(
@@ -650,13 +719,17 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 11),
-                      const SizedBox(width: 3),
-                      Text(
-                        rating > 0 ? rating.toStringAsFixed(1) : 'Baru',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
+                      // ✅ Memakai Helper Star
+                      _buildStarRating(rating),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          rating > 0 ? '${rating.toStringAsFixed(1)} ($reviews)' : 'Baru',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -722,22 +795,23 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     );
   }
 
+  // ✅ DIUBAH AGAR SUPPORT GRIDVIEW (Lebar fix dibuang)
   Widget _buildSkeletonCard() {
     return Container(
-      width: 150,
-      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
             ),
           ),

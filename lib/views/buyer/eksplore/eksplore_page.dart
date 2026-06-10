@@ -232,13 +232,13 @@ class _ExplorePageState extends State<ExplorePage> {
                         : SliverGrid(
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 14,
-                                  mainAxisSpacing: 14,
-                                  childAspectRatio: widget.isSellerView
-                                      ? 0.75
-                                      : 0.60,
-                                ),
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: widget.isSellerView
+                                  ? 0.75
+                                  : 0.7,
+                            ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _buildProductCard(
                                 _filteredProducts[index],
@@ -471,8 +471,20 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  // ✅ _buildProductCard yang sudah diperbaiki
+  // --- LOGIC RATING YANG DITAMBAHKAN ---
+  double _parseRating(Map<String, dynamic> product) {
+    return double.tryParse((product['reviews_avg_rating'] ?? product['rating'] ?? '0.0').toString()) ?? 0.0;
+  }
+
+  int _parseReviews(Map<String, dynamic> product) {
+    return int.tryParse((product['reviews_count'] ?? product['reviews'] ?? '0').toString()) ?? 0;
+  }
+
   Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
+    // 🌟 Mengambil rating dan ulasan dengan aman
+    final double rating = _parseRating(product);
+    final int reviews = _parseReviews(product);
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -506,7 +518,6 @@ class _ExplorePageState extends State<ExplorePage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // ✅ Support URL dari API dan asset lokal
                     _buildProductImage(product['image']),
                     Positioned(
                       top: 8,
@@ -553,14 +564,12 @@ class _ExplorePageState extends State<ExplorePage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      _buildStarRating(
-                        (product['rating'] as num?)?.toDouble() ?? 0.0,
-                      ),
+                      _buildStarRating(rating),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          // ✅ reviews dijamin jadi String
-                          '${product['reviews'] ?? 0} reviews',
+                          // Menampilkan rata-rata dan jumlah ulasan
+                          rating > 0 ? '${rating.toStringAsFixed(1)} ($reviews reviews)' : 'Baru',
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFF9098B1),
@@ -572,7 +581,6 @@ class _ExplorePageState extends State<ExplorePage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    // ✅ pakai 'price' bukan 'priceLabel'
                     product['price'] ?? 'Rp 0',
                     style: const TextStyle(
                       fontSize: 13,
@@ -585,20 +593,16 @@ class _ExplorePageState extends State<ExplorePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        // 1. Tambahkan 'async' di sini
                         onPressed: () async {
-                          // 2. Tambahkan 'await' agar mendapatkan nilai bool (true/false)
                           final bool added = await context
                               .read<KeranjangController>()
                               .addToCart(product);
 
-                          // 3. Pastikan context masih valid sebelum menampilkan SnackBar
                           if (!context.mounted) return;
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                // Sekarang 'added' sudah bertipe bool, jadi tidak eror lagi
                                 added
                                     ? '${product['title']} ditambahkan!'
                                     : 'Sudah ada di keranjang',
@@ -638,7 +642,6 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  // ✅ Helper gambar — support URL http dan asset lokal
   Widget _buildProductImage(String? image) {
     if (image == null || image.isEmpty) {
       return Container(
@@ -723,7 +726,7 @@ class _FilterSheet extends StatefulWidget {
   final String? initialPriceRange;
   final int? initialRating;
   final void Function(Set<String> categories, String? priceRange, int? rating)
-  onApply;
+      onApply;
   final VoidCallback onReset;
 
   const _FilterSheet({
