@@ -58,62 +58,204 @@ class _LoginPageState extends State<LoginPage>
     super.dispose();
   }
 
-  void _login() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _isLoading = true);
-
-  final result = await AuthController.login(
-    username: _usernameController.text.trim(),
-    password: _passwordController.text,
-    role: _selectedRole,
-  );
-
-  if (!mounted) return;
-  setState(() => _isLoading = false);
-
-  if (result.success && result.user != null) {
-    await context.read<UserController>().setUserFromModel(result.user!);
-
-    // Show warning banner if account has a warning status before navigating
-    if (result.accountStatus == 'warning') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message),
-          backgroundColor: const Color(0xFFF59E0B),
-          duration: const Duration(seconds: 5),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
-
-    if (_selectedRole == 'Buyer') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const buyer.HomePage()),
-        (route) => false,
-      );
-    } else {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
-        (route) => false,
-      );
-    }
-  } else {
-    // Banned / suspended / wrong credentials
-    final isBanned = result.accountStatus == 'banned' || result.accountStatus == 'suspended';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor: isBanned ? const Color(0xFF7F1D1D) : const Color(0xFFFF4D67),
-        duration: Duration(seconds: isBanned ? 8 : 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+  String _formatSuspendDate(String rawDate) {
+      try {
+          final date = DateTime.parse(rawDate).toLocal();
+          return '${date.day.toString().padLeft(2, '0')}/'
+                '${date.month.toString().padLeft(2, '0')}/'
+                '${date.year} '
+                '${date.hour.toString().padLeft(2, '0')}:'
+                '${date.minute.toString().padLeft(2, '0')}';
+      } catch (_) {
+          return rawDate;
+      }
   }
-}
+
+  void _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    final result = await AuthController.login(
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+      role: _selectedRole,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result.success && result.user != null) {
+      await context.read<UserController>().setUserFromModel(result.user!);
+
+      // Warning — tampilkan dialog dulu, baru masuk setelah klik OK
+      if (result.accountStatus == 'warning') {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 28),
+                SizedBox(width: 8),
+                Text(
+                  'Peringatan Akun',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            content: Text(
+              result.message,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Saya Mengerti',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Navigasi ke home sesuai role
+      if (!mounted) return;
+      if (_selectedRole == 'Buyer') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const buyer.HomePage()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const seller.SellerHomePage()),
+          (route) => false,
+        );
+      }
+    } else {
+      // Banned / suspended / wrong credentials
+      final isBanned = result.accountStatus == 'banned';
+      final isSuspended = result.accountStatus == 'suspended';
+
+      if (isBanned || isSuspended) {
+          showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)
+                  ),
+                  title: Row(
+                      children: [
+                          Icon(
+                              isBanned
+                                  ? Icons.block_rounded
+                                  : Icons.access_time_rounded,
+                              color: const Color(0xFF7F1D1D),
+                              size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                              isBanned ? 'Akun Dibanned' : 'Akun Disuspend',
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF7F1D1D),
+                              ),
+                          ),
+                      ],
+                  ),
+                  content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          Text(
+                              result.message,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B7280),
+                              ),
+                          ),
+                          // ← Tampilkan tanggal berakhir suspend kalau ada
+                          if (isSuspended && result.suspendedUntil != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF2F2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: const Color(0xFFFCA5A5),
+                                      ),
+                                  ),
+                                  child: Row(
+                                      children: [
+                                          const Icon(
+                                              Icons.calendar_today_rounded,
+                                              size: 16,
+                                              color: Color(0xFF7F1D1D),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                              child: Text(
+                                                  'Suspend berakhir: ${_formatSuspendDate(result.suspendedUntil!)}',
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Color(0xFF7F1D1D),
+                                                  ),
+                                              ),
+                                          ),
+                                      ],
+                                  ),
+                              ),
+                          ],
+                      ],
+                  ),
+                  actions: [
+                      ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF7F1D1D),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                              ),
+                          ),
+                          child: const Text(
+                              'Tutup',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                              ),
+                          ),
+                      ),
+                  ],
+              ),
+          );
+      } else {
+        // Wrong credentials — cukup SnackBar biasa
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: const Color(0xFFFF4D67),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
