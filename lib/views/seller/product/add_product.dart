@@ -26,6 +26,7 @@ import 'package:provider/provider.dart'; // Meniru pola di product_page.dart & h
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart';
 
 import 'package:byteme_digital_marketplace/services/api_service.dart';
+import 'package:byteme_digital_marketplace/utils/notif_helper.dart';
 
 // ============================================================
 // ADD PRODUCT PAGE — StatefulWidget
@@ -235,14 +236,14 @@ class _AddProductPageState extends State<AddProductPage>
     final bool formValid = _formKey.currentState!.validate();
 
     if (_thumbnailFile == null) {
-      _showErrorSnackbar('Please select a product thumbnail.');
+      NotifHelper.showError(context, 'Please select a product thumbnail.');
       return;
     }
 
     if (!formValid) return;
 
     if (_selectedCategory == null) {
-      _showErrorSnackbar('Please select a product category.');
+      NotifHelper.showError(context, 'Please select a product category.');
       return;
     }
 
@@ -268,20 +269,26 @@ class _AddProductPageState extends State<AddProductPage>
       if (!mounted) return;
 
       if (response.statusCode == 201) {
-        context.read<ProductController>().fetchMyProducts(); // ✅ tanpa alias
-        setState(() {
-          _isLoading = false;
-          _submissionStatus = 'pending';
-        });
+          context.read<ProductController>().fetchMyProducts();
+          setState(() {
+              _isLoading = false;
+              _submissionStatus = 'pending';
+          });
+
+          // ← TAMBAHKAN INI setelah setState
+          NotifHelper.showSuccess(
+              context,
+              'Produk berhasil diupload! Menunggu persetujuan admin.',
+          );
       } else {
         final data = jsonDecode(response.body);
-        _showErrorSnackbar(data['message'] ?? 'Gagal menambahkan produk');
+        NotifHelper.showError(context, data['message'] ?? 'Gagal menambahkan produk');
         setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('Error submitProduct: $e');
       if (mounted) {
-        _showErrorSnackbar('Tidak dapat terhubung ke server.');
+        NotifHelper.showError(context, 'Tidak dapat terhubung ke server.');
         setState(() => _isLoading = false);
       }
     }

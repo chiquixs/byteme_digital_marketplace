@@ -7,12 +7,14 @@ class AuthResult {
   final String message;
   final UserModel? user;
   final String? accountStatus; // 'active' | 'warning' | 'banned' | 'suspended'
+  final String? suspendedUntil;
 
   AuthResult({
     required this.success,
     required this.message,
     this.user,
     this.accountStatus,
+    this.suspendedUntil,
   });
 }
 
@@ -51,13 +53,12 @@ class AuthController {
       }
 
       if (response.statusCode == 403) {
-        // banned / suspended — no token issued
-        final msg = data['message'] ?? 'Akun Anda telah diblokir.';
-        return AuthResult(
-          success: false,
-          message: msg,
-          accountStatus: status, // 'banned' or 'suspended'
-        );
+          return AuthResult(
+              success: false,
+              message: data['message'] ?? 'Akun Anda telah diblokir.',
+              accountStatus: status,
+              suspendedUntil: data['suspended_until'], // ← tambahkan ini
+          );
       }
 
       // 401 wrong credentials, or other errors
