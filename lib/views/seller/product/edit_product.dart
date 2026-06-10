@@ -1,35 +1,18 @@
 // ============================================================
 // EDIT PRODUCT PAGE
 // Letakkan file ini di: lib/views/seller/product/edit_product.dart
-//
-// Halaman ini dibuka dari titik tiga (⋯) di product_page.dart
-// ketika seller menekan "Edit Product".
-//
-// Menerima data produk yang sudah ada via constructor parameter
-// dan mengisi form dengan data tersebut untuk diedit.
 // ============================================================
 
-// ── IMPORT DART CORE ──────────────────────────────────────────────────────────
-import 'dart:io'; // Untuk File() — meniru pola di edit_profile_page.dart
-
-// ── IMPORT FLUTTER ───────────────────────────────────────────────────────────
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Untuk FilteringTextInputFormatter
-
-// ── IMPORT PACKAGE ───────────────────────────────────────────────────────────
-import 'package:image_picker/image_picker.dart'; // Meniru pola di user_controller.dart
-import 'package:provider/provider.dart'; // Meniru pola di product_page.dart
-
-// ── IMPORT CONTROLLER ────────────────────────────────────────────────────────
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart';
+import 'package:byteme_digital_marketplace/services/api_service.dart';
 
-// ============================================================
-// EDIT PRODUCT PAGE — StatefulWidget
-// Meniru pola class AddProductPage di add_product.dart
-// ============================================================
 class EditProductPage extends StatefulWidget {
-  // Menerima data produk yang akan diedit dari product_page.dart
-  // Meniru pola parameter constructor di berbagai halaman project ini
   final Map<String, dynamic> product;
 
   const EditProductPage({super.key, required this.product});
@@ -40,88 +23,56 @@ class EditProductPage extends StatefulWidget {
 
 class _EditProductPageState extends State<EditProductPage>
     with SingleTickerProviderStateMixin {
-  // ── WARNA UTAMA ──────────────────────────────────────────────────────────
-  // Sama persis dengan product_page.dart & add_product.dart
   static const Color _accentColor = Color(0xFF3D4270);
   static const Color _primaryBlue = Color(0xFF6B7FD7);
   static const Color _bgColor = Color(0xFFE8E8F0);
   static const Color _errorColor = Color(0xFFFF4D67);
 
-  // ── FORM KEY ─────────────────────────────────────────────────────────────
-  // Meniru pola _formKey di register_page.dart & add_product.dart
   final _formKey = GlobalKey<FormState>();
 
-  // ── CONTROLLER FORM ──────────────────────────────────────────────────────
-  // Meniru pola TextEditingController di register_page.dart
-  // Di-inisialisasi di initState() dengan data produk yang diterima
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   late TextEditingController _priceController;
 
-  // ── STATE THUMBNAIL ──────────────────────────────────────────────────────
-  // null = gunakan gambar lama (dari product['image'])
-  // berisi File jika user memilih gambar baru
   File? _newThumbnailFile;
-
-  // ── ImagePicker ──────────────────────────────────────────────────────────
-  // Meniru pola final ImagePicker _picker = ImagePicker(); di user_controller.dart
   final ImagePicker _picker = ImagePicker();
 
-  // ── KATEGORI DROPDOWN ────────────────────────────────────────────────────
-  // Meniru pola _categories & _selectedCategory di add_product.dart
-  final List<String> _categories = [
-    'UI Kit',
-    'Template',
-    'E-Book',
-    'Preset',
-    'Icon Pack',
-    'Font',
-    'Plugin',
-    'Other',
-  ];
-  String? _selectedCategory;
+  // 🌟 Kategori Dinamis dari API
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoadingCategories = false;
+  String? _selectedCategory; // Akan menyimpan ID kategori
 
-  // ── LOADING STATE ────────────────────────────────────────────────────────
-  // Meniru pola _isLoading di register_page.dart & add_product.dart
   bool _isLoading = false;
 
-  // ── ANIMASI ──────────────────────────────────────────────────────────────
-  // Meniru pola AnimationController di register_page.dart & add_product.dart
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // LIFECYCLE
-  // Meniru pola initState di register_page.dart
-  // Bedanya: controller diisi dengan data produk yang sudah ada (pre-filled)
-  // ──────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
 
-    // ── Pre-fill form dengan data produk yang diterima ──
-    // Meniru pola late TextEditingController + data dari controller di edit_profile_page.dart
+    // ── Pre-fill form dengan data produk yang diterima dari Laravel ──
     _nameController = TextEditingController(
-      text: widget.product['title'] ?? '',
+      text: widget.product['nama_produk'] ?? widget.product['title'] ?? '',
     );
     _descriptionController = TextEditingController(
-      text: widget.product['description'] ?? '',
+      text: widget.product['deskripsi'] ?? widget.product['description'] ?? '',
     );
 
-    // Harga: bersihkan simbol '$' agar hanya angka yang muncul di form
-    // Misal product['price'] = '$29' → ambil hanya '29'
-    final rawPrice = (widget.product['price'] as String? ?? '')
-        .replaceAll(RegExp(r'[^\d]'), '');
+    final rawPrice = (widget.product['harga'] ?? widget.product['price'] ?? '').toString().replaceAll(RegExp(r'[^\d]'), '');
     _priceController = TextEditingController(text: rawPrice);
 
-    // Kategori: cocokkan dengan list _categories
-    // Jika ada di list → pre-select, jika tidak → null (user pilih manual)
-    final cat = widget.product['category'] as String?;
-    _selectedCategory = _categories.contains(cat) ? cat : null;
+    // Ambil kategori ID bawaan (jika ada) untuk di pre-select
+    if (widget.product['kategori_id'] != null) {
+      _selectedCategory = widget.product['kategori_id'].toString();
+    } else if (widget.product['kategori'] is Map) {
+      _selectedCategory = widget.product['kategori']['id']?.toString();
+    }
 
-    // ── Setup animasi halaman masuk ──
-    // Meniru pola di add_product.dart & register_page.dart
+    // Ambil data kategori asli dari API
+    _fetchCategories();
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -138,9 +89,32 @@ class _EditProductPageState extends State<EditProductPage>
     _animController.forward();
   }
 
+  // 🌟 Fungsi mengambil kategori dari Backend (Sama dengan Add Product)
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final response = await ApiService.get('/kategori');
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        setState(() {
+          _categories = data.map((e) => Map<String, dynamic>.from(e)).toList();
+          
+          // Jika tidak ada kategori bawaan produk, biarkan null
+          // Tapi pastikan ID lama masih ada di daftar baru, jika tidak, reset null
+          if (_selectedCategory != null) {
+            final exists = _categories.any((c) => c['id'].toString() == _selectedCategory);
+            if (!exists) _selectedCategory = null;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetch kategori: $e');
+    }
+    if (mounted) setState(() => _isLoadingCategories = false);
+  }
+
   @override
   void dispose() {
-    // Selalu dispose semua controller — meniru pola di register_page.dart
     _animController.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
@@ -148,10 +122,6 @@ class _EditProductPageState extends State<EditProductPage>
     super.dispose();
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // PICK THUMBNAIL BARU
-  // Meniru pola _pickThumbnail di add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Future<void> _pickThumbnail() async {
     showModalBottomSheet(
       context: context,
@@ -166,7 +136,6 @@ class _EditProductPageState extends State<EditProductPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar — meniru pola di product_page.dart
             Container(
               width: 40,
               height: 4,
@@ -210,7 +179,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // Eksekusi pengambilan gambar — meniru pola _doPickImage di add_product.dart
   Future<void> _doPickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
@@ -228,17 +196,10 @@ class _EditProductPageState extends State<EditProductPage>
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // SAVE / UPDATE PRODUK
-  // Meniru pola _submitProduct di add_product.dart
-  // Bedanya: memanggil controller.updateProduct() bukan addProduct()
-  // ──────────────────────────────────────────────────────────────────────────
   Future<void> _saveProduct() async {
-    // Validasi form
     final bool formValid = _formKey.currentState!.validate();
     if (!formValid) return;
 
-    // Validasi kategori
     if (_selectedCategory == null) {
       _showErrorSnackbar('Select a product category.');
       return;
@@ -246,55 +207,52 @@ class _EditProductPageState extends State<EditProductPage>
 
     setState(() => _isLoading = true);
 
-    // TODO(backend): Ganti simulasi ini dengan panggilan API:
-    //   await ProductService.updateProduct(
-    //     id: widget.product['id'],
-    //     name: _nameController.text.trim(),
-    //     description: _descriptionController.text.trim(),
-    //     price: double.parse(_priceController.text.trim()),
-    //     thumbnail: _newThumbnailFile, // null = tidak ganti thumbnail
-    //     category: _selectedCategory!,
-    //   );
-    await Future.delayed(const Duration(seconds: 2)); // simulasi network
+    try {
+      final productId = widget.product['produk_id'] ?? widget.product['id'];
+      
+      final response = await ApiService.postMultipart(
+        '/produk/$productId', 
+        {
+          // 🌟 BARIS '_method': 'PUT' DIHAPUS DARI SINI
+          'nama_produk': _nameController.text.trim(),
+          'deskripsi': _descriptionController.text.trim(),
+          'harga': _priceController.text.trim(),
+          'kategori_ids[]': _selectedCategory!, 
+        },
+        filePaths: _newThumbnailFile != null ? {'file': _newThumbnailFile!.path} : null,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    // ── Update data di ProductController ──
-    // Memanggil controller.updateProduct() yang sudah disiapkan di product_controller.dart
-    context.read<ProductController>().updateProduct(
-      widget.product['title'], // cari produk berdasarkan title lama
-      {
-        'title': _nameController.text.trim(),
-        'price': 'Rp${_priceController.text.trim()}',
-        'description': _descriptionController.text.trim(),
-        'category': _selectedCategory,
-        // Jika user pilih gambar baru → pakai path baru, jika tidak → pertahankan lama
-        'image': _newThumbnailFile?.path ?? widget.product['image'],
-        // Pertahankan data lain yang tidak diedit
-        'sales': widget.product['sales'],
-        'rating': widget.product['rating'],
-        'status': widget.product['status'],
-      },
-    );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Refresh product list di controller
+        context.read<ProductController>().fetchMyProducts();
 
-    setState(() => _isLoading = false);
+        setState(() => _isLoading = false);
 
-    // Tampilkan snackbar sukses — meniru pola di product_page.dart
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('The product has been successfully updated'),
-        backgroundColor: const Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('The product has been successfully updated'),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
 
-    // Kembali ke halaman sebelumnya (product_page.dart)
-    // Meniru pola Navigator.pop di berbagai halaman
-    if (mounted) Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
+      } else {
+        final data = jsonDecode(response.body);
+        _showErrorSnackbar(data['message'] ?? 'Failed to update product');
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackbar('Connection error.');
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
-  // ── Helper: tampilkan error SnackBar ─────────────────────────────────────
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -306,9 +264,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ──────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,10 +285,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // HEADER
-  // Meniru pola _buildHeader di add_product.dart & product_page.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -341,7 +292,7 @@ class _EditProductPageState extends State<EditProductPage>
         children: [
           GestureDetector(
             onTap: () {
-              if (_isLoading) return; // jangan kembali saat loading
+              if (_isLoading) return;
               Navigator.pop(context);
             },
             child: Container(
@@ -367,16 +318,15 @@ class _EditProductPageState extends State<EditProductPage>
             ),
           ),
           const Spacer(),
-          // Badge nama produk yang sedang diedit
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: _primaryBlue.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
+            child: const Text(
               'Edit',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: _primaryBlue,
@@ -388,10 +338,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FORM — pre-filled dengan data produk yang diterima
-  // Meniru pola _buildForm di add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
@@ -400,13 +346,11 @@ class _EditProductPageState extends State<EditProductPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── 1. THUMBNAIL ──────────────────────────────────────────────
             _buildSectionLabel('Thumbnail Product'),
             const SizedBox(height: 8),
             _buildThumbnailPicker(),
             const SizedBox(height: 20),
 
-            // ── 2. NAMA PRODUK ────────────────────────────────────────────
             _buildSectionLabel('Product Name'),
             const SizedBox(height: 8),
             _buildTextField(
@@ -414,18 +358,13 @@ class _EditProductPageState extends State<EditProductPage>
               hint: 'Example: Mobile App UI Kit',
               icon: Icons.label_outline_rounded,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Product name cannot be empty';
-                }
-                if (v.trim().length < 3) {
-                  return 'Product name must be at least 3 characters';
-                }
+                if (v == null || v.trim().isEmpty) return 'Product name cannot be empty';
+                if (v.trim().length < 3) return 'Product name must be at least 3 characters';
                 return null;
               },
             ),
             const SizedBox(height: 16),
 
-            // ── 3. DESKRIPSI ──────────────────────────────────────────────
             _buildSectionLabel('Product Description'),
             const SizedBox(height: 8),
             _buildTextField(
@@ -434,51 +373,38 @@ class _EditProductPageState extends State<EditProductPage>
               icon: Icons.description_outlined,
               maxLines: 4,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Description cannot be empty';
-                }
-                if (v.trim().length < 10) {
-                  return 'Description must be at least 10 characters';
-                }
+                if (v == null || v.trim().isEmpty) return 'Description cannot be empty';
+                if (v.trim().length < 10) return 'Description must be at least 10 characters';
                 return null;
               },
             ),
             const SizedBox(height: 16),
 
-            // ── 4. HARGA ──────────────────────────────────────────────────
             _buildSectionLabel('Price'),
             const SizedBox(height: 8),
             _buildTextField(
               controller: _priceController,
-              hint: 'Example: 150.000',
+              hint: 'Example: 150000',
               icon: Icons.attach_money_rounded,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'The price field cannot be left blank';
-                }
+                if (v == null || v.trim().isEmpty) return 'The price field cannot be left blank';
                 final price = int.tryParse(v.trim());
-                if (price == null || price <= 0) {
-                  return 'Please enter a valid price';
-                }
+                if (price == null || price <= 0) return 'Please enter a valid price';
                 return null;
               },
             ),
             const SizedBox(height: 16),
 
-            // ── 5. KATEGORI ───────────────────────────────────────────────
             _buildSectionLabel('Category'),
             const SizedBox(height: 8),
             _buildCategoryDropdown(),
             const SizedBox(height: 32),
 
-            // ── 6. TOMBOL SIMPAN ──────────────────────────────────────────
             _buildSaveButton(),
-
             const SizedBox(height: 12),
 
-            // ── 7. TOMBOL BATAL ───────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -503,15 +429,9 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // THUMBNAIL PICKER WIDGET
-  // Meniru pola _buildThumbnailPicker di add_product.dart
-  // Bedanya: bisa menampilkan gambar lama (asset) atau baru (File)
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildThumbnailPicker() {
-    // Tentukan apakah ada gambar yang akan ditampilkan
     final bool hasNewImage = _newThumbnailFile != null;
-    final String? oldImagePath = widget.product['image'] as String?;
+    final String? oldImagePath = widget.product['file_path'] ?? widget.product['image'];
     final bool hasOldImage = oldImagePath != null && oldImagePath.isNotEmpty;
 
     return GestureDetector(
@@ -541,33 +461,23 @@ class _EditProductPageState extends State<EditProductPage>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Tampilkan gambar baru (File) jika ada ──
               if (hasNewImage)
                 Image.file(_newThumbnailFile!, fit: BoxFit.cover)
-
-              // ── Tampilkan gambar lama (asset/path) jika ada ──
               else if (hasOldImage)
-                Image.asset(
+                Image.network(
                   oldImagePath!,
                   fit: BoxFit.cover,
-                  // Meniru pola errorBuilder di product_page.dart
-                  errorBuilder: (context, error, stackTrace) {
-                    return _buildThumbnailPlaceholder();
-                  },
+                  errorBuilder: (context, error, stackTrace) => _buildThumbnailPlaceholder(),
                 )
-
-              // ── Placeholder jika tidak ada gambar ──
               else
                 _buildThumbnailPlaceholder(),
 
-              // ── Overlay tombol ganti thumbnail (selalu tampil di atas gambar) ──
               if (hasNewImage || hasOldImage)
                 Positioned(
                   right: 10,
                   bottom: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: _primaryBlue,
                       borderRadius: BorderRadius.circular(10),
@@ -575,8 +485,7 @@ class _EditProductPageState extends State<EditProductPage>
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.edit_rounded,
-                            color: Colors.white, size: 14),
+                        Icon(Icons.edit_rounded, color: Colors.white, size: 14),
                         SizedBox(width: 4),
                         Text(
                           'Replace',
@@ -597,7 +506,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // Placeholder thumbnail kosong
   Widget _buildThumbnailPlaceholder() {
     return Container(
       color: Colors.white,
@@ -635,10 +543,7 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // DROPDOWN KATEGORI
-  // Meniru pola _buildCategoryDropdown di add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
+  // 🌟 Kategori Dropdown Dinamis
   Widget _buildCategoryDropdown() {
     return Container(
       decoration: BoxDecoration(
@@ -646,46 +551,49 @@ class _EditProductPageState extends State<EditProductPage>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE8ECF4), width: 1),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCategory,
-          isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          hint: Row(
-            children: [
-              const Icon(Icons.category_outlined,
-                  color: Color(0xFF9098B1), size: 20),
-              const SizedBox(width: 12),
-              Text(
-                'Select product category',
-                style: TextStyle(color: const Color(0xFFB0B8CC), fontSize: 14),
-              ),
-            ],
+      child: _isLoadingCategories
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(color: Color(0xFF6B7FD7), strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Loading categories...', style: TextStyle(color: Color(0xFF9098B1), fontSize: 14)),
+              ],
+            ),
+          )
+        : DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _selectedCategory,
+            isExpanded: true,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            hint: const Row(
+              children: [
+                Icon(Icons.category_outlined, color: Color(0xFF9098B1), size: 20),
+                SizedBox(width: 12),
+                Text('Select product category', style: TextStyle(color: Color(0xFFB0B8CC), fontSize: 14)),
+              ],
+            ),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF9098B1)),
+            borderRadius: BorderRadius.circular(12),
+            onChanged: (String? value) => setState(() => _selectedCategory = value),
+            items: _categories.map((category) {
+              return DropdownMenuItem<String>(
+                value: category['id'].toString(), // Kirim ID
+                child: Text(
+                  category['nama'] ?? '',
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF1A1D2E)),
+                ),
+              );
+            }).toList(),
           ),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF9098B1)),
-          borderRadius: BorderRadius.circular(12),
-          onChanged: (String? value) {
-            setState(() => _selectedCategory = value);
-          },
-          items: _categories.map((category) {
-            return DropdownMenuItem<String>(
-              value: category,
-              child: Text(
-                category,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF1A1D2E)),
-              ),
-            );
-          }).toList(),
         ),
-      ),
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // TOMBOL SIMPAN
-  // Meniru pola _buildSubmitButton di add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,
@@ -705,8 +613,7 @@ class _EditProductPageState extends State<EditProductPage>
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
               )
             : const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -715,8 +622,7 @@ class _EditProductPageState extends State<EditProductPage>
                   SizedBox(width: 8),
                   Text(
                     'Save Changes',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -724,10 +630,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // SECTION LABEL
-  // Meniru _buildSectionLabel di register_page.dart & add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildSectionLabel(String label) {
     return Text(
       label,
@@ -739,10 +641,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // TEXT FIELD REUSABLE
-  // Meniru _buildTextField di register_page.dart & add_product.dart — identik
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -769,8 +667,7 @@ class _EditProductPageState extends State<EditProductPage>
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -796,10 +693,6 @@ class _EditProductPageState extends State<EditProductPage>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // HELPER: Tombol opsi di bottom sheet (pilih sumber gambar)
-  // Meniru pola _buildSourceOptionButton di add_product.dart
-  // ──────────────────────────────────────────────────────────────────────────
   Widget _buildSourceOptionButton({
     required IconData icon,
     required String label,
@@ -821,8 +714,7 @@ class _EditProductPageState extends State<EditProductPage>
             const SizedBox(width: 12),
             Text(
               label,
-              style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w600, color: color),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color),
             ),
           ],
         ),
