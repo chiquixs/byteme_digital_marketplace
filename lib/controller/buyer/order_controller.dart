@@ -16,12 +16,12 @@ class OrderController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await ApiService.get('/orders/current');
+      final response = await ApiService.get('/pesanan');
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _currentOrders = List<OrderItem>.from(
-          (data['orders'] ?? []).map((item) => OrderItem.fromJson(item))
-        );
+        final decoded = jsonDecode(response.body);
+        final List rawData = decoded is List ? decoded : (decoded['orders'] ?? decoded['data'] ?? []);
+        final List<OrderItem> allOrders = rawData.map((item) => OrderItem.fromJson(item)).toList();
+        _currentOrders = allOrders.take(2).toList(); // Batasi maksimal 2 sesuai request
       } else {
         _currentOrders = [];
       }
@@ -37,12 +37,11 @@ class OrderController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await ApiService.get('/orders/history');
+      final response = await ApiService.get('/history/pembelian');
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _historyOrders = List<OrderItem>.from(
-          (data['orders'] ?? []).map((item) => OrderItem.fromJson(item))
-        );
+        final decoded = jsonDecode(response.body);
+        final List rawData = decoded is List ? decoded : (decoded['orders'] ?? decoded['data'] ?? []);
+        _historyOrders = rawData.map((item) => OrderItem.fromJson(item)).toList();
       } else {
         _historyOrders = [];
       }
@@ -54,23 +53,31 @@ class OrderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> submitRating(int orderId, int rating, String review) async {
+  // 🌟 PERBAIKAN SINKRONISASI TOTAL DENGAN BACKEND ANGGA
+  Future<bool> submitRating(String productId, int rating, String review, int orderId) async {
     try {
-      final response = await ApiService.postAuth('/orders/rate', {
-        'order_id': orderId,
+      // Mengirimkan payload sesuai validasi store() Angga: produk_id, rating, komentar
+      final response = await ApiService.postAuth('/review', {
+        'produk_id': productId, 
         'rating': rating,
-        'review': review,
+        'komentar': review,
       });
-      if (response.statusCode == 200) {
-        // Update local data
+      
+      debugPrint('Hasil Post Review [${response.statusCode}]: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Update data ulasan lokal agar UI langsung pindah seksi otomatis
         final index = _historyOrders.indexWhere((o) => o.id == orderId);
         if (index != -1) {
           _historyOrders[index] = _historyOrders[index].copyWith(rating: rating, reviewText: review);
           notifyListeners();
         }
+        return true;
       }
+      return false;
     } catch (e) {
-      debugPrint('Error submitting rating: $e');
+      debugPrint('Error submit ulasan: $e');
+      return false;
     }
   }
 
@@ -79,8 +86,7 @@ class OrderController extends ChangeNotifier {
       final response = await ApiService.postAuth('/orders/checkout', {
         'items': items,
       });
-      if (response.statusCode == 200) {
-        // Refresh current orders
+      if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchCurrentOrders();
       }
     } catch (e) {
