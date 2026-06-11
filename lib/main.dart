@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
+
+// Controller Imports
 import 'package:byteme_digital_marketplace/controller/user_controller.dart';
 import 'package:byteme_digital_marketplace/controller/buyer/order_controller.dart';
 import 'package:byteme_digital_marketplace/controller/buyer/product_controller.dart' as buyerProduct;
 import 'package:byteme_digital_marketplace/controller/seller/product_controller.dart' as sellerProduct;
-import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 import 'package:byteme_digital_marketplace/controller/buyer/cart_controller.dart';
+import 'package:byteme_digital_marketplace/controller/buyer/favorit_controller.dart'; // Controller baru kita
+
+// Views & Utils Imports
+import 'package:byteme_digital_marketplace/views/auth/login_page.dart';
 import 'package:byteme_digital_marketplace/utils/navigator_key.dart';
 import 'package:byteme_digital_marketplace/utils/notif_helper.dart';
 
@@ -20,6 +25,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => sellerProduct.ProductController()),
         ChangeNotifierProvider(create: (_) => OrderController()),
         ChangeNotifierProvider(create: (_) => KeranjangController()),
+        ChangeNotifierProvider(create: (_) => FavoritController()), // 🌟 SEKARANG SUDAH DIDAFTARKAN DI SINI!
       ],
       child: const MyApp(),
     ),

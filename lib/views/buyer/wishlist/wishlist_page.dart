@@ -1,44 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../product/product_detail_page.dart';
-import '../../../utils/buyer/cart_manager.dart';
+import '../../../controller/buyer/cart_controller.dart';
+import '../../../controller/buyer/favorit_controller.dart';
 
 // ============================================================
-// WISHLIST PAGE - Produk yang di-like (Fixed Image Crash)
-// Letakkan file ini di: lib/views/wishlist/wishlist_page.dart
+// WISHLIST PAGE - Menggunakan FavoritController (API Laravel)
 // ============================================================
 
-// ── WISHLIST MANAGER ──
-// Singleton sederhana untuk menyimpan state wishlist lintas halaman.
-// TODO(backend): Ganti dengan WishlistController + Provider/Riverpod
-class WishlistManager {
-  WishlistManager._();
-  static final WishlistManager instance = WishlistManager._();
-
-  final List<Map<String, dynamic>> _items = [];
-  final List<VoidCallback> _listeners = [];
-
-  List<Map<String, dynamic>> get items => List.unmodifiable(_items);
-
-  bool isWishlisted(Map<String, dynamic> product) {
-    return _items.any((p) => p['title'] == product['title']);
-  }
-
-  void toggle(Map<String, dynamic> product) {
-    if (isWishlisted(product)) {
-      _items.removeWhere((p) => p['title'] == product['title']);
-    } else {
-      _items.add(product);
-    }
-    for (final cb in _listeners) {
-      cb();
-    }
-  }
-
-  void addListener(VoidCallback cb) => _listeners.add(cb);
-  void removeListener(VoidCallback cb) => _listeners.remove(cb);
-}
-
-// ── WISHLIST PAGE ──
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
 
@@ -47,25 +16,20 @@ class WishlistPage extends StatefulWidget {
 }
 
 class _WishlistPageState extends State<WishlistPage> {
-  final _wm = WishlistManager.instance;
-
   @override
   void initState() {
     super.initState();
-    _wm.addListener(_onWishlistChanged);
+    // Tarik data favorit terbaru dari API server setiap halaman ini dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FavoritController>().fetchFavorit();
+    });
   }
-
-  @override
-  void dispose() {
-    _wm.removeListener(_onWishlistChanged);
-    super.dispose();
-  }
-
-  void _onWishlistChanged() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
-    final items = _wm.items;
+    final favoritController = context.watch<FavoritController>();
+    final items = favoritController.items;
+    final isLoading = favoritController.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F8),
@@ -82,9 +46,16 @@ class _WishlistPageState extends State<WishlistPage> {
 
             // ── CONTENT ──
             Expanded(
-              child: items.isEmpty
-                  ? _buildEmptyState()
-                  : _buildWishlistGrid(items),
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF6B7FD7),
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : items.isEmpty
+                      ? _buildEmptyState()
+                      : _buildWishlistGrid(items),
             ),
           ],
         ),
@@ -126,7 +97,7 @@ class _WishlistPageState extends State<WishlistPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Wishlist',
+              'Favorit',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -193,7 +164,7 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            'No items in your wishlist',
+            'Belum ada produk favorit',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -202,7 +173,7 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Tap the ❤️ icon on the product page\nto save your favorite items',
+            'Ketuk ikon ❤️ pada halaman produk\nuntuk menyimpan barang idamanmu',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -239,7 +210,7 @@ class _WishlistPageState extends State<WishlistPage> {
   Widget _buildWishlistCard(Map<String, dynamic> product, BuildContext context) {
     final double rating = (product['rating'] as num?)?.toDouble() ?? 0.0;
     final String priceLabel =
-        product['priceLabel'] ?? product['price'] ?? '';
+        product['priceLabel'] ?? product['price']?.toString() ?? '';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -247,7 +218,10 @@ class _WishlistPageState extends State<WishlistPage> {
         MaterialPageRoute(
           builder: (_) => ProductDetailPage(product: product),
         ),
-      ),
+      ).then((_) {
+        // Ketika kembali dari halaman detail, refresh list untuk mencocokkan jika ada perubahan favorit
+        context.read<FavoritController>().fetchFavorit();
+      }),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -271,7 +245,6 @@ class _WishlistPageState extends State<WishlistPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // 🌟 MENGGUNAKAN SMART IMAGE BUILDER AGAR TIDAK CRASH
                     _buildProductImage(product),
                     
                     // Badge kategori
@@ -297,26 +270,35 @@ class _WishlistPageState extends State<WishlistPage> {
                           ),
                         ),
                       ),
-                    // Tombol unlike (hapus dari wishlist)
+                    // Tombol unlike (hapus dari favorit via controller API)
                     Positioned(
                       top: 8,
                       right: 8,
                       child: GestureDetector(
-                        onTap: () {
-                          _wm.toggle(product);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${product['title']} dihapus dari wishlist',
+                        onTap: () async {
+                          final success = await context
+                              .read<FavoritController>()
+                              .toggleFavorit(product);
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? '${product['title']} dihapus dari favorit'
+                                      : 'Gagal menghapus favorit dari server',
+                                ),
+                                duration: const Duration(seconds: 2),
+                                backgroundColor: success
+                                    ? const Color(0xFF9098B1)
+                                    : Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
-                              duration: const Duration(seconds: 2),
-                              backgroundColor: const Color(0xFF9098B1),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
+                            );
+                          }
                         },
                         child: Container(
                           width: 30,
@@ -377,7 +359,7 @@ class _WishlistPageState extends State<WishlistPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    priceLabel,
+                    priceLabel.startsWith('Rp') ? priceLabel : 'Rp $priceLabel',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -388,25 +370,30 @@ class _WishlistPageState extends State<WishlistPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        final added =
-                            CartManager.instance.addToCart(product);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              added
-                                  ? '${product['title']} ditambahkan ke keranjang!'
-                                  : '${product['title']} sudah ada di keranjang',
+                      onPressed: () async {
+                        // Memanggil KeranjangController yang berbasis API
+                        final added = await context
+                            .read<KeranjangController>()
+                            .addToCart(product);
+                        
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                added
+                                    ? '${product['title']} ditambahkan ke keranjang!'
+                                    : '${product['title']} sudah ada di keranjang',
+                              ),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: added
+                                  ? const Color(0xFF6B7FD7)
+                                  : const Color(0xFF9098B1),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: added
-                                ? const Color(0xFF6B7FD7)
-                                : const Color(0xFF9098B1),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6B7FD7),
