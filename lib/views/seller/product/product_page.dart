@@ -78,7 +78,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
       return 'approved';
     } else if (status == 'pending') {
       return 'pending';
-    } else if (status == 'rejected' || status == 'ditolak') {
+    } else if (status == 'nonatktif' || status == 'ditolak' || status == 'nonaktif') {
       return 'rejected';
     }
     return 'draft';
@@ -466,7 +466,7 @@ class _SellerProductPageState extends State<SellerProductPage> {
           ),
           const SizedBox(width: 8),
           
-          // Badge Status & Tombol Edit/Delete
+          // Badge Status & Tombol Edit/Delete/View Reason
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -487,10 +487,38 @@ class _SellerProductPageState extends State<SellerProductPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Kumpulan Tombol
+              
+              // Kumpulan Tombol Action
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // 🌟 ICON MATA (Hanya muncul jika status rejected)
+                  if (effectiveStatus == 'rejected') ...[
+                    GestureDetector(
+                      onTap: () {
+                        // Mencari data catatan penolakan
+                        final rawCatatan = product['catatan'] ?? 
+                                           product['alasan'] ?? 
+                                           (product['peninjauan'] != null ? product['peninjauan']['catatan'] : null);
+                        
+                        final reason = (rawCatatan != null && rawCatatan.toString().trim().isNotEmpty)
+                            ? rawCatatan.toString()
+                            : 'Produk ditolak tanpa ada catatan spesifik dari admin.';
+                        
+                        _showRejectionReason(context, title, reason);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.remove_red_eye_rounded, color: Colors.orange, size: 16),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -565,6 +593,46 @@ class _SellerProductPageState extends State<SellerProductPage> {
           return const Icon(Icons.star_border, color: Color(0xFFD0D5E8), size: 13);
         }
       }),
+    );
+  }
+
+  // 🌟 POP-UP UNTUK MENAMPILKAN ALASAN PENOLAKAN
+  void _showRejectionReason(BuildContext context, String productName, String reason) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Catatan Admin', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Produk: $productName', style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withOpacity(0.2)),
+              ),
+              child: Text(reason, style: const TextStyle(color: Color(0xFF1A1D2E), height: 1.4)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup', style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
