@@ -95,27 +95,49 @@ class _ExplorePageState extends State<ExplorePage> {
         if (!hasMatchingCategory) return false;
       }
 
-      // Price filter
-      if (_appliedPriceRange != null) {
+      // 🌟 PERBAIKAN: PRICE FILTER YANG LEBIH AMAN 🌟
+      if (_appliedPriceRange != null && _appliedPriceRange!.isNotEmpty) {
+        // Tambahkan max limit yang lebih besar (milyaran) agar tidak terpotong
         final priceRange = _priceRangeOptions.firstWhere(
           (r) => r['label'] == _appliedPriceRange,
-          orElse: () => {'min': 0, 'max': 999999},
+          orElse: () => {'min': 0, 'max': 9999999999}, 
         );
+
+        int priceNum = 0;
         final rawPrice = product['harga'] ?? product['price'] ?? 0;
-        final priceNum = (rawPrice is num)
-            ? rawPrice.toInt()
-            : (int.tryParse(
-                    rawPrice.toString().replaceAll(RegExp(r'[^0-9]'), ''),
-                  ) ??
-                  0);
-        if (priceNum < priceRange['min'] || priceNum > priceRange['max']) {
+
+        if (rawPrice is num) {
+          priceNum = rawPrice.toInt();
+        } else {
+          String strPrice = rawPrice.toString();
+          
+          // Buang desimal .00 atau ,00 bawaan database agar tidak jadi jutaan
+          if (strPrice.endsWith('.00') || strPrice.endsWith(',00')) {
+            strPrice = strPrice.substring(0, strPrice.length - 3);
+          } else if (strPrice.endsWith('.0') || strPrice.endsWith(',0')) {
+            strPrice = strPrice.substring(0, strPrice.length - 2);
+          }
+
+          // Bersihkan semua titik/koma pemisah sisa (contoh: "Rp 15.000" jadi "15000")
+          final cleanStr = strPrice.replaceAll(RegExp(r'[^0-9]'), '');
+          priceNum = int.tryParse(cleanStr) ?? 0;
+        }
+
+        // Casting sebagai 'num' untuk menghindari error tipe data double vs int
+        final minPrice = (priceRange['min'] as num?)?.toInt() ?? 0;
+        final maxPrice = (priceRange['max'] as num?)?.toInt() ?? 9999999999;
+
+        if (priceNum < minPrice || priceNum > maxPrice) {
           return false;
         }
       }
 
       // Rating filter
       if (_appliedRating != null) {
-        final rating = _parseRating(product);
+        // Pastikan _parseRating mengembalikan angka yang benar
+        final dynamic rawRating = product['rating'] ?? product['reviews_avg_rating'] ?? 0;
+        final double rating = double.tryParse(rawRating.toString()) ?? 0.0;
+        
         if (rating < _appliedRating!) return false;
       }
 
