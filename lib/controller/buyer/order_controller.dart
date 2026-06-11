@@ -21,7 +21,7 @@ class OrderController extends ChangeNotifier {
         final decoded = jsonDecode(response.body);
         final List rawData = decoded is List ? decoded : (decoded['orders'] ?? decoded['data'] ?? []);
         final List<OrderItem> allOrders = rawData.map((item) => OrderItem.fromJson(item)).toList();
-        _currentOrders = allOrders.take(2).toList(); // Batasi maksimal 2 sesuai request
+        _currentOrders = allOrders.take(2).toList();
       } else {
         _currentOrders = [];
       }
@@ -53,23 +53,30 @@ class OrderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 🌟 PERBAIKAN SINKRONISASI TOTAL DENGAN BACKEND ANGGA
+  /// Submit rating — update lokal langsung, TIDAK trigger refresh dari API.
+  /// Data lokal sudah benar; biarkan user pull-to-refresh manual jika mau sync.
   Future<bool> submitRating(String productId, int rating, String review, int orderId) async {
     try {
-      // Mengirimkan payload sesuai validasi store() Angga: produk_id, rating, komentar
       final response = await ApiService.postAuth('/review', {
-        'produk_id': productId, 
+        'produk_id': productId,
         'rating': rating,
         'komentar': review,
       });
-      
+
       debugPrint('Hasil Post Review [${response.statusCode}]: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Update data ulasan lokal agar UI langsung pindah seksi otomatis
-        final index = _historyOrders.indexWhere((o) => o.id == orderId);
+        // Cari berdasarkan orderId (id transaksi) ATAU productId sebagai fallback
+        int index = _historyOrders.indexWhere((o) => o.id == orderId);
+        if (index == -1) {
+          index = _historyOrders.indexWhere((o) => o.productId == productId);
+        }
+
         if (index != -1) {
-          _historyOrders[index] = _historyOrders[index].copyWith(rating: rating, reviewText: review);
+          _historyOrders[index] = _historyOrders[index].copyWith(
+            rating: rating,
+            reviewText: review.isNotEmpty ? review : null,
+          );
           notifyListeners();
         }
         return true;
