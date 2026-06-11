@@ -11,7 +11,7 @@ class HistoryOrdersPage extends StatefulWidget {
 }
 
 class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
-  bool _isSubmitting = false; // State loading ulasan
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -59,7 +59,9 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                     ),
                     onPressed: () {
                       Navigator.pop(context);
-                      _handleRefresh();
+                      // Data lokal sudah diupdate oleh controller saat submit berhasil.
+                      // TIDAK perlu fetch ulang dari API — itu yang menyebabkan rating hilang.
+                      // User bisa pull-to-refresh manual jika ingin sync penuh dari server.
                     },
                     child: const Text('Got it!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -100,8 +102,8 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
                       return IconButton(
-                        onPressed: _isSubmitting 
-                            ? null 
+                        onPressed: _isSubmitting
+                            ? null
                             : () => setDialogState(() => selectedStars = index + 1),
                         icon: Icon(
                           index < selectedStars ? Icons.star_rounded : Icons.star_border_rounded,
@@ -133,7 +135,6 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                   onPressed: _isSubmitting ? null : () => Navigator.pop(context),
                   child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                 ),
-                // ✅ SEKARANG SINKRON MELEMPARKAN VARIABEL KE BACKEND ANGGA
                 SizedBox(
                   height: 40,
                   child: ElevatedButton(
@@ -146,18 +147,17 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                         ? null
                         : () async {
                             setDialogState(() => _isSubmitting = true);
-                            
-                            // Menembak submit rating dengan parameter baru (productId)
+
                             bool success = await context.read<OrderController>().submitRating(
-                              order.productId, // UUID Produk dari model sapu jagat
+                              order.productId,
                               selectedStars,
                               reviewController.text,
-                              order.id, // ID Transaksi lokal
+                              order.id,
                             );
-                            
+
                             if (!mounted) return;
                             setDialogState(() => _isSubmitting = false);
-                            
+
                             if (success) {
                               Navigator.pop(context);
                               _showSuccessNotification();
@@ -219,10 +219,16 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
                       if (unratedOrders.isNotEmpty) ...[
                         const Text('Waiting for Rating', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF3D4270))),
                         const SizedBox(height: 12),
-                        ...unratedOrders.map((order) => _OrderCard(order: order, onTap: () => _showRatingDialog(order))),
+                        ...unratedOrders.map((order) => _OrderCard(
+                              order: order,
+                              onTap: () => _showRatingDialog(order),
+                            )),
                       ],
                       if (unratedOrders.isNotEmpty && ratedOrders.isNotEmpty)
-                        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(thickness: 1, color: Colors.white)),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Divider(thickness: 1, color: Colors.white),
+                        ),
                       if (ratedOrders.isNotEmpty) ...[
                         const Text('Rated History', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF3D4270))),
                         const SizedBox(height: 12),
@@ -257,70 +263,105 @@ class _HistoryOrdersPageState extends State<HistoryOrdersPage> {
   }
 }
 
-class _OrderCard extends StatelessWidget {
+// ─── Order Card ───────────────────────────────────────────────────────────────
+
+class _OrderCard extends StatefulWidget {
   final OrderItem order;
   final VoidCallback? onTap;
 
   const _OrderCard({required this.order, this.onTap});
 
   @override
+  State<_OrderCard> createState() => _OrderCardState();
+}
+
+class _OrderCardState extends State<_OrderCard> {
+  bool _reviewExpanded = false;
+
+  bool get _hasReview => widget.order.rating != null && widget.order.rating! > 0;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Container(
-            width: 65,
-            height: 65,
-            decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(12)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: order.imagePath.isNotEmpty && order.imagePath.startsWith('http')
-                  ? Image.network(
-                      order.imagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported_outlined, color: Color(0xFF8B90C1), size: 28),
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B7FD7)));
-                      },
-                    )
-                  : const Icon(Icons.shopping_bag_outlined, color: Color(0xFF8B90C1), size: 28),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+          // ── Main row ──
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF3D4270)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                _buildReviewContent(context),
+                // Gambar produk
+                Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(12)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: widget.order.imagePath.isNotEmpty && widget.order.imagePath.startsWith('http')
+                        ? Image.network(
+                            widget.order.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported_outlined, color: Color(0xFF8B90C1), size: 28),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B7FD7)));
+                            },
+                          )
+                        : const Icon(Icons.shopping_bag_outlined, color: Color(0xFF8B90C1), size: 28),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.order.productName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF3D4270)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildActionArea(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+
+          // ── Review panel (expandable, hanya muncul jika sudah ada review) ──
+          if (_hasReview && _reviewExpanded) _buildReviewPanel(),
         ],
       ),
     );
   }
 
-  Widget _buildReviewContent(BuildContext context) {
-    if (order.rating == null || order.rating == 0) {
+  /// Bagian bawah nama produk: tombol "Tulis Ulasan" ATAU bintang + tombol lihat/tutup
+  Widget _buildActionArea() {
+    if (!_hasReview) {
+      // Belum ada review → tampilkan tombol tulis ulasan
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Expanded(child: Text('Give Rating & Review', style: TextStyle(fontSize: 12, color: Color(0xFF8B90C1), fontWeight: FontWeight.w500))),
+          const Expanded(
+            child: Text(
+              'Give Rating & Review',
+              style: TextStyle(fontSize: 12, color: Color(0xFF8B90C1), fontWeight: FontWeight.w500),
+            ),
+          ),
           SizedBox(
             height: 32,
             child: ElevatedButton(
-              onPressed: onTap,
+              onPressed: widget.onTap,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B7FD7),
                 elevation: 0,
@@ -333,21 +374,97 @@ class _OrderCard extends StatelessWidget {
         ],
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+
+    // Sudah ada review → tampilkan bintang + tombol lihat/tutup ulasan
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Bintang rating
         Row(
-          children: List.generate(5, (i) => Icon(
-            i < (order.rating ?? 0) ? Icons.star_rounded : Icons.star_border_rounded,
-            size: 18,
-            color: i < (order.rating ?? 0) ? const Color(0xFFFFB800) : Colors.grey.shade300,
-          )),
+          children: List.generate(
+            5,
+            (i) => Icon(
+              i < (widget.order.rating ?? 0) ? Icons.star_rounded : Icons.star_border_rounded,
+              size: 18,
+              color: i < (widget.order.rating ?? 0) ? const Color(0xFFFFB800) : Colors.grey.shade300,
+            ),
+          ),
         ),
-        if (order.reviewText != null && order.reviewText!.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(order.reviewText!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic), maxLines: 2, overflow: TextOverflow.ellipsis),
-        ],
+        // Tombol lihat/tutup ulasan
+        GestureDetector(
+          onTap: () => setState(() => _reviewExpanded = !_reviewExpanded),
+          child: Row(
+            children: [
+              Text(
+                _reviewExpanded ? 'Tutup Ulasan' : 'Lihat Ulasan',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7FD7), fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                _reviewExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: const Color(0xFF6B7FD7),
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  /// Panel ulasan yang muncul saat di-expand
+  Widget _buildReviewPanel() {
+    final comment = widget.order.reviewText;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F2F8),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.rate_review_rounded, size: 14, color: Color(0xFF6B7FD7)),
+                const SizedBox(width: 6),
+                const Text(
+                  'Ulasan Kamu',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF3D4270)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Bintang detail
+            Row(
+              children: List.generate(
+                5,
+                (i) => Icon(
+                  i < (widget.order.rating ?? 0) ? Icons.star_rounded : Icons.star_border_rounded,
+                  size: 16,
+                  color: i < (widget.order.rating ?? 0) ? const Color(0xFFFFB800) : Colors.grey.shade300,
+                ),
+              ),
+            ),
+            if (comment != null && comment.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                comment,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+              ),
+            ] else ...[
+              const SizedBox(height: 6),
+              Text(
+                'Tidak ada komentar.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade400, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
