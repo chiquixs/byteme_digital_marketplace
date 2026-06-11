@@ -13,6 +13,21 @@ class SellerProfilePage extends StatefulWidget {
 }
 
 class _SellerProfilePageState extends State<SellerProfilePage> {
+  String _formatBalance(double balance) {
+    return 'Rp ${balance.toInt().toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]}.',
+    )}';
+  }
+
+  String _formatJoinDate(DateTime? date) {
+    if (date == null) return '-';
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,9 +100,15 @@ class _SellerProfilePageState extends State<SellerProfilePage> {
                       showChevron: false,
                     ),
                     _buildMenuItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: 'Bank Account',
-                      subLabel: 'BCA - Bank Central Asia',
+                      icon: Icons.badge_outlined,
+                      label: 'Role',
+                      subLabel: userController.role,
+                      showChevron: false,
+                    ),
+                    _buildMenuItem(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Bergabung Sejak',
+                      subLabel: _formatJoinDate(userController.createdAt),
                       showChevron: false,
                     ),
                     _buildMenuItem(
@@ -97,9 +118,17 @@ class _SellerProfilePageState extends State<SellerProfilePage> {
                       showChevron: false,
                     ),
                     _buildMenuItem(
-                      icon: Icons.vpn_key_outlined,
-                      label: 'Password',
-                      subLabel: '••••••••••••',
+                      icon: Icons.phone_android_outlined,
+                      label: 'Nomor Ponsel',
+                      subLabel: userController.phoneNumber.isEmpty
+                          ? 'Nomor ponsel kosong atau belum disetting'
+                          : userController.phoneNumber,
+                      showChevron: false,
+                    ),
+                    _buildMenuItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Saldo',
+                      subLabel: _formatBalance(userController.balance),
                       isLast: true,
                       showChevron: false,
                     ),
