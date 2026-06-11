@@ -329,19 +329,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: accentColor,
-                      size: 22,
-                    ),
-                  ),
+                  
                 ],
               ),
 
