@@ -1,12 +1,13 @@
 class UserModel {
-  final String? id; // Gabungan dari versi seller
+  final String? id;
   final String username;
   final String email;
   final String phone;
   final String role;
   final String? profileImage;
-  final double? balance; // Gabungan dari versi buyer
-  
+  final double? balance;
+  final DateTime? createdAt; // ← TAMBAH
+
   UserModel({
     this.id,
     required this.username,
@@ -15,9 +16,9 @@ class UserModel {
     required this.role,
     this.profileImage,
     this.balance,
+    this.createdAt, // ← TAMBAH
   });
 
-  // ── MAPPING DATA DARI JSON BACKEND / LARAVEL SUPABASE ──
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id']?.toString(),
@@ -26,15 +27,16 @@ class UserModel {
       phone: json['phone'] ?? json['phone_number'] ?? json['no_hp'] ?? '',
       role: json['role'] ?? 'Buyer',
       profileImage: json['profile_image'] ?? json['avatar_url'] ?? json['avatar'],
-      
-      // MEMBACA KOLOM BALANCE DARI SUPABASE
-      balance: json['balance'] != null 
-          ? (json['balance'] as num).toDouble() 
+      balance: json['balance'] != null
+          ? (json['balance'] as num).toDouble()
           : 0.0,
+      // ← TAMBAH: parse created_at dari Laravel
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 
-  // ── KONVERSI KEMBALI KE JSON ──
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -44,6 +46,7 @@ class UserModel {
       'role': role,
       'profile_image': profileImage,
       'balance': balance,
+      'created_at': createdAt?.toIso8601String(), // ← TAMBAH
     };
   }
 }

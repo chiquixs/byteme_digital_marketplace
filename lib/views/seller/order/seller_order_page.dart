@@ -36,24 +36,19 @@ class _SellerOrderPageState extends State<SellerOrderPage> {
       _errorMessage = null;
     });
     try {
-      final response = await ApiService.get('/seller/orders');
-      debugPrint(
-        'fetchSellerOrders [${response.statusCode}]: ${response.body}',
-      );
+      final response = await ApiService.get('/history/penjualan');
+      debugPrint('fetchSellerOrders [${response.statusCode}]: ${response.body}');
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        final List raw = decoded is List
-            ? decoded
-            : (decoded['data'] ?? decoded['orders'] ?? []);
+        // Response dibungkus 'data'
+        final List raw = decoded['data'] ?? [];
         setState(() {
           _allOrders = raw.map((e) => Map<String, dynamic>.from(e)).toList();
           _currentPage = 1;
         });
       } else {
-        setState(
-          () => _errorMessage = 'Gagal memuat data (${response.statusCode})',
-        );
+        setState(() => _errorMessage = 'Gagal memuat data (${response.statusCode})');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Tidak dapat terhubung ke server');
@@ -511,10 +506,7 @@ class _SellerOrderPageState extends State<SellerOrderPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildInfoText(
-                        'Pembeli',
-                        order['username'] ?? '-',
-                      ),
+                      child: _buildInfoText('Pembeli', order['buyer_name'] ?? '-'),
                     ),
                     Expanded(
                       child: _buildInfoText(
@@ -530,10 +522,8 @@ class _SellerOrderPageState extends State<SellerOrderPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildInfoText(
-                        'Qty',
-                        '${order['qty_terjual'] ?? 1}x',
-                      ),
+                      child: _buildInfoText('Qty', '${order['qty'] ?? 1}x'),
+
                     ),
                     Expanded(
                       child: _buildInfoText(
