@@ -193,7 +193,9 @@ class _SellerProductPageState extends State<SellerProductPage> {
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 itemCount: filteredProducts.length,
                                 itemBuilder: (context, index) {
+                                  // ✅ UPDATE: Melempar context secara eksplisit ke fungsi _buildProductCard
                                   return _buildProductCard(
+                                    context,
                                     filteredProducts[index],
                                     productController,
                                   );
@@ -383,7 +385,8 @@ class _SellerProductPageState extends State<SellerProductPage> {
   // ----------------------------------------------------------
   // PRODUCT CARD
   // ----------------------------------------------------------
-  Widget _buildProductCard(Map<String, dynamic> product, ProductController controller) {
+  // ✅ UPDATE: Tambahkan BuildContext context di parameter pertama
+  Widget _buildProductCard(BuildContext context, Map<String, dynamic> product, ProductController controller) {
     final String title = product['nama_produk'] ?? product['title'] ?? '-';
     final dynamic rawPrice = product['harga'] ?? product['price'] ?? 0;
     final String? imageUrl = product['file_path'] ?? product['image'];
@@ -496,17 +499,34 @@ class _SellerProductPageState extends State<SellerProductPage> {
                   if (effectiveStatus == 'rejected') ...[
                     GestureDetector(
                       onTap: () {
-                        // Mencari data catatan penolakan
-                        final rawCatatan = product['catatan'] ?? 
-                                           product['alasan'] ?? 
-                                           (product['peninjauan'] != null ? product['peninjauan']['catatan'] : null);
-                        
-                        final reason = (rawCatatan != null && rawCatatan.toString().trim().isNotEmpty)
-                            ? rawCatatan.toString()
+                        // ✅ PERBAIKAN: EKSTRAKSI ALASAN YANG AMAN (ANTI CRASH)
+                        String extractedReason = '';
+                        try {
+                          if (product['catatan'] != null && product['catatan'].toString().isNotEmpty) {
+                            extractedReason = product['catatan'].toString();
+                          } else if (product['alasan'] != null && product['alasan'].toString().isNotEmpty) {
+                            extractedReason = product['alasan'].toString();
+                          } else if (product['peninjauan'] != null) {
+                            // Cek jika peninjauan adalah array/list
+                            if (product['peninjauan'] is List && (product['peninjauan'] as List).isNotEmpty) {
+                              extractedReason = product['peninjauan'].last['catatan']?.toString() ?? '';
+                            } 
+                            // Cek jika peninjauan adalah object/map tunggal
+                            else if (product['peninjauan'] is Map) {
+                              extractedReason = product['peninjauan']['catatan']?.toString() ?? '';
+                            }
+                          }
+                        } catch (e) {
+                          debugPrint('Error parsing reason: $e');
+                        }
+
+                        final reason = extractedReason.trim().isNotEmpty 
+                            ? extractedReason 
                             : 'Produk ditolak tanpa ada catatan spesifik dari admin.';
                         
                         _showRejectionReason(context, title, reason);
                       },
+                      behavior: HitTestBehavior.opaque, // Memastikan area bisa diklik dengan baik
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -596,42 +616,130 @@ class _SellerProductPageState extends State<SellerProductPage> {
     );
   }
 
-  // 🌟 POP-UP UNTUK MENAMPILKAN ALASAN PENOLAKAN
+  // 🌟 POP-UP UNTUK MENAMPILKAN ALASAN PENOLAKAN (MODERN UI)
   void _showRejectionReason(BuildContext context, String productName, String reason) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Catatan Admin', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Produk: $productName', style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.withOpacity(0.2)),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
-              child: Text(reason, style: const TextStyle(color: Color(0xFF1A1D2E), height: 1.4)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup', style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.bold)),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Icon Berwarna Merah/Oranye
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50.withOpacity(0.8),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_rounded, color: Colors.redAccent, size: 40),
+              ),
+              const SizedBox(height: 20),
+              
+              // Judul Utama
+              const Text(
+                'Produk Ditolak',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1D2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              // Nama Produk (Subtitle)
+              Text(
+                productName,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              
+              // Kotak Alasan Penolakan
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FD),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFEEF0F7)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.speaker_notes_rounded, size: 16, color: Color(0xFF6B7FD7)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Catatan Admin:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6B7FD7),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      reason,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1D2E),
+                        height: 1.5,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              
+              // Tombol Mengerti (Full Width)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B7FD7),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Mengerti',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
