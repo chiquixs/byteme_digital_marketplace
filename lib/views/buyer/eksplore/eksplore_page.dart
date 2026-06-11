@@ -43,10 +43,16 @@ class _ExplorePageState extends State<ExplorePage> {
 
   // FIX 1: Tambah .trim() di semua return value
   String _getCategoryName(Map<String, dynamic> product) {
+    // Response API kita: product['categories'] adalah array dari relasi belongsToMany
+    if (product['categories'] is List && (product['categories'] as List).isNotEmpty) {
+      final firstCat = (product['categories'] as List).first;
+      if (firstCat is Map) {
+        return (firstCat['nama'] ?? '').toString().trim();
+      }
+    }
+    // Fallback untuk format lama
     if (product['kategori'] is Map) {
       return (product['kategori']['nama'] ?? '').toString().trim();
-    } else if (product['category'] is Map) {
-      return (product['category']['nama'] ?? '').toString().trim();
     }
     return (product['nama_kategori'] ??
             product['kategori'] ??
@@ -61,35 +67,41 @@ class _ExplorePageState extends State<ExplorePage> {
     final query = _searchController.text.toLowerCase();
 
     return allProducts.where((product) {
-      final categoryName = _getCategoryName(product).toLowerCase();
-      final title =
-          (product['title'] ?? product['nama_produk'] ?? product['name'] ?? '')
-              .toString()
-              .toLowerCase();
+      final title = (product['title'] ?? product['nama_produk'] ?? product['name'] ?? '')
+          .toString().toLowerCase();
 
-      if (query.isNotEmpty &&
-          !title.contains(query) &&
-          !categoryName.contains(query)) {
+      // Ambil semua nama kategori produk ini
+      List<String> productCategories = [];
+      if (product['categories'] is List) {
+        productCategories = (product['categories'] as List)
+            .map((c) => (c['nama'] ?? '').toString().trim().toLowerCase())
+            .where((name) => name.isNotEmpty)
+            .toList();
+      }
+
+      // Search filter
+      final categoryMatch = productCategories.any((c) => c.contains(query));
+      if (query.isNotEmpty && !title.contains(query) && !categoryMatch) {
         return false;
       }
 
+      // Kategori filter
       if (_appliedCategories.isNotEmpty) {
-        // FIX 2: Tambah .trim().toLowerCase() di kedua sisi compare
-        final isMatch = _appliedCategories.any(
-          (appliedCat) =>
-              appliedCat.trim().toLowerCase() ==
-              categoryName.trim().toLowerCase(),
+        final hasMatchingCategory = _appliedCategories.any(
+          (appliedCat) => productCategories.contains(
+            appliedCat.trim().toLowerCase(),
+          ),
         );
-        if (!isMatch) return false;
+        if (!hasMatchingCategory) return false;
       }
 
+      // Price filter
       if (_appliedPriceRange != null) {
         final priceRange = _priceRangeOptions.firstWhere(
           (r) => r['label'] == _appliedPriceRange,
           orElse: () => {'min': 0, 'max': 999999},
         );
         final rawPrice = product['harga'] ?? product['price'] ?? 0;
-        // FIX 3: Strip karakter non-angka (misal "Rp 50.000") sebelum parse
         final priceNum = (rawPrice is num)
             ? rawPrice.toInt()
             : (int.tryParse(
@@ -101,6 +113,7 @@ class _ExplorePageState extends State<ExplorePage> {
         }
       }
 
+      // Rating filter
       if (_appliedRating != null) {
         final rating = _parseRating(product);
         if (rating < _appliedRating!) return false;
