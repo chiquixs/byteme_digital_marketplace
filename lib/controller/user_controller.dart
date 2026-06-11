@@ -12,6 +12,7 @@ class UserController extends ChangeNotifier {
   String? _profileImagePath; // path file lokal (sementara, sebelum di-upload)
   String? _profileImageUrl;  // TAMBAH: URL dari Supabase (permanent)
   String _role = 'Buyer';
+  DateTime? _createdAt;
   double _balance = 0.0; // Menyimpan saldo dari backend (Supabase)
   List<Map<String, dynamic>> _pendingOrders = [];
 
@@ -22,6 +23,7 @@ class UserController extends ChangeNotifier {
   String? get profileImagePath => _profileImagePath;
   String? get profileImageUrl => _profileImageUrl; // ← TAMBAH getter
   String get role => _role;
+  DateTime? get createdAt => _createdAt;
   double get balance => _balance; // ➔ TAMBAH getter saldo
   List<Map<String, dynamic>> get pendingOrders => _pendingOrders;
 
@@ -30,6 +32,8 @@ class UserController extends ChangeNotifier {
   // ── LOAD dari SharedPreferences saat app start
   Future<void> loadUserFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    final createdAtStr = prefs.getString('user_created_at');
+    _createdAt = createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
     _username        = prefs.getString('user_username') ?? '';
     _email           = prefs.getString('user_email') ?? '';
     _phoneNumber     = prefs.getString('user_phone') ?? '';
@@ -50,10 +54,14 @@ class UserController extends ChangeNotifier {
     _role            = user.role;
     _displayName     = user.username;
     _profileImageUrl = user.profileImage; // ← TAMBAH
-
+    _createdAt = user.createdAt;
     // KODE YANG DIPERBAIKI: Langsung ambil tanpa try-catch dan dynamic
     _balance = user.balance ?? 0.0;
-
+    if (user.createdAt != null) {
+      await prefs.setString('user_created_at', user.createdAt!.toIso8601String());
+    } else {
+      await prefs.remove('user_created_at');
+    }
     await prefs.setString('user_username', user.username);
     await prefs.setString('user_email', user.email);
     await prefs.setString('user_phone', user.phone);
@@ -86,6 +94,7 @@ class UserController extends ChangeNotifier {
     _profileImageUrl  = null; 
     _balance          = 0.0; 
     _pendingOrders    = [];
+    _createdAt = null;
 
     notifyListeners();
   }

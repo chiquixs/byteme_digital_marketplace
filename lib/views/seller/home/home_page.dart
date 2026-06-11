@@ -161,6 +161,7 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
     try {
       final productRes = await ApiService.get('/produk');
       final myProdukRes = await ApiService.get('/my-produk');
+      final historyRes = await ApiService.get('/history/penjualan'); // ← TAMBAH
 
       if (!mounted) return;
 
@@ -181,26 +182,26 @@ class _SellerHomeContentState extends State<SellerHomeContent> {
         final List myProducts = decoded is List
             ? decoded
             : (decoded['data'] ?? decoded['products'] ?? []);
-            
+        setState(() => _totalProducts = myProducts.length);
+      }
+
+      // ← GANTI: hitung total sales dari history penjualan yang paid/success
+      if (historyRes.statusCode == 200) {
+        final decoded = jsonDecode(historyRes.body);
+        final List history = decoded['data'] ?? [];
         setState(() {
-          _totalProducts = myProducts.length;
-          
-          _totalSales = myProducts.fold(
-            0,
-            (sum, p) {
-              var terjualRaw = p['qty_terjual'] ?? p['total_terjual'] ?? p['terjual'] ?? p['sold'] ?? p['qty_sold'] ?? 0;
-              int angkaTerjual = terjualRaw is num 
-                  ? terjualRaw.toInt() 
-                  : (int.tryParse(terjualRaw.toString()) ?? 0);
-              return sum + angkaTerjual;
-            },
-          );
+          _totalSales = history.where((order) {
+            final status = (order['status_pembayaran'] ?? '').toString().toLowerCase();
+            return status == 'success' || status == 'paid';
+          }).fold(0, (sum, order) {
+            final qty = order['qty'] ?? 1;
+            return sum + (qty is num ? qty.toInt() : int.tryParse(qty.toString()) ?? 1);
+          });
         });
       }
+
     } catch (_) {
-      if (mounted) {
-        setState(() => _errorMessage = 'Gagal memuat data. Coba lagi.');
-      }
+      if (mounted) setState(() => _errorMessage = 'Gagal memuat data. Coba lagi.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
