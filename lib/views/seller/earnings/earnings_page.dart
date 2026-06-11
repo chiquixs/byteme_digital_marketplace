@@ -157,7 +157,10 @@ class _EarningsPageState extends State<EarningsPage> {
 
   // ── Popup detail history ───────────────────────────────────────────────────
   void _showHistoryDetail(Map<String, dynamic> item) {
-    final double amt = (item['amount'] as num?)?.toDouble() ?? 0.0;
+    final dynamic rawAmount = item['amount'];
+    final double amt = rawAmount is num
+        ? rawAmount.toDouble()
+        : double.tryParse(rawAmount?.toString() ?? '0') ?? 0.0;
     final String status = item['status'] ?? 'pending';
     final String rawDate = item['created_at'] ?? '';
     final String formattedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : '-';
@@ -741,8 +744,10 @@ class _EarningsPageState extends State<EarningsPage> {
       itemCount: _withdrawHistory.length,
       itemBuilder: (context, index) {
         final item = _withdrawHistory[index];
-        final double amt =
-            (item['amount'] as num?)?.toDouble() ?? 0.0;
+        final dynamic rawAmount = item['amount'];
+        final double amt = rawAmount is num
+            ? rawAmount.toDouble()
+            : double.tryParse(rawAmount?.toString() ?? '0') ?? 0.0;
         final String status = item['status'] ?? 'pending';
         final String rawDate = item['created_at'] ?? '';
         final String formattedDate =
