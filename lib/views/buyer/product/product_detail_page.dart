@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../wishlist/wishlist_page.dart';
 import '../../../services/review_service.dart';
-import '../../../utils/buyer/cart_manager.dart';
 import 'package:provider/provider.dart';
 import '../../../controller/buyer/cart_controller.dart';
+import '../../../controller/buyer/favorit_controller.dart';
 
 // ============================================================
-// PRODUCT DETAIL PAGE - Single Image & Fit Contain
+// PRODUCT DETAIL PAGE - Menggunakan FavoritController (API)
 // ============================================================
 
 class ProductDetailPage extends StatefulWidget {
@@ -33,11 +33,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       widget.product['id']?.toString() ??
       widget.product['produk_id']?.toString() ??
       '';
-  bool _isWishlisted = false;
+  
   bool _isDescriptionExpanded = false;
-  final _wm = WishlistManager.instance;
 
-  // Hanya mengambil 1 gambar utama
+  // Mengambil 1 gambar utama
   String get _mainImage {
     final img =
         widget.product['image'] ??
@@ -49,13 +48,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void initState() {
     super.initState();
-    _isWishlisted = _wm.isWishlisted(widget.product);
-    _wm.addListener(_onWishlistChanged);
     _loadReviews();
-  }
-
-  void _onWishlistChanged() {
-    setState(() => _isWishlisted = _wm.isWishlisted(widget.product));
   }
 
   Future<void> _loadReviews() async {
@@ -171,12 +164,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   @override
-  void dispose() {
-    _wm.removeListener(_onWishlistChanged);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final product = widget.product;
     final String title = product['title'] ?? product['nama_produk'] ?? '';
@@ -197,6 +184,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         : (product['reviews_count'] ?? product['reviews'] ?? 0);
 
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    // Gunakan Provider untuk mendapatkan status ke-favorit-an secara reaktif
+    final favoritController = context.watch<FavoritController>();
+    final bool isWishlisted = favoritController.isWishlisted(product);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F8),
@@ -300,12 +291,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           if (!widget.isSellerView)
                             IconButton(
                               icon: Icon(
-                                _isWishlisted
+                                isWishlisted
                                     ? Icons.favorite
                                     : Icons.favorite_border,
                                 color: const Color(0xFFFF4D67),
                               ),
-                              onPressed: () => _wm.toggle(product),
+                              onPressed: () async {
+                                final success = await context
+                                    .read<FavoritController>()
+                                    .toggleFavorit(product);
+                                if (!success && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Gagal menyimpan favorit ke server'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                         ],
                       ),
@@ -482,12 +486,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               child: img.startsWith('http')
                   ? Image.network(
                       img,
-                      fit: BoxFit.contain, // 🌟 Mencegah gambar terpotong/zoom
+                      fit: BoxFit.contain, // Mencegah gambar terpotong/zoom
                       errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
                     )
                   : Image.asset(
                       img,
-                      fit: BoxFit.contain, // 🌟 Mencegah gambar terpotong/zoom
+                      fit: BoxFit.contain, // Mencegah gambar terpotong/zoom
                       errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
                     ),
             ),
@@ -507,124 +511,124 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Future<void> _addToCart(
-  BuildContext context,
-  Map<String, dynamic> product,
-) async {
-  if (_isAddingToCart) return;
-  setState(() => _isAddingToCart = true);
+    BuildContext context,
+    Map<String, dynamic> product,
+  ) async {
+    if (_isAddingToCart) return;
+    setState(() => _isAddingToCart = true);
 
-  try {
-    final bool added = await context
-        .read<KeranjangController>()
-        .addToCart(product);
+    try {
+      final bool added = await context
+          .read<KeranjangController>()
+          .addToCart(product);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    _showCartOverlay(context, product, added);
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Gagal menambahkan ke keranjang'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  } finally {
-    if (mounted) setState(() => _isAddingToCart = false);
+      _showCartOverlay(context, product, added);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menambahkan ke keranjang'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isAddingToCart = false);
+    }
   }
-}
 
-void _showCartOverlay(
-  BuildContext context,
-  Map<String, dynamic> product,
-  bool added,
-) {
-  late OverlayEntry overlayEntry;
-  overlayEntry = OverlayEntry(
-    builder: (context) => Center(
-      child: Material(
-        color: Colors.transparent,
-        child: TweenAnimationBuilder(
-          duration: const Duration(milliseconds: 300),
-          tween: Tween<double>(begin: 0.0, end: 1.0),
-          builder: (context, double value, child) => Opacity(
-            opacity: value,
-            child: Transform.scale(
-              scale: 0.9 + (0.1 * value),
-              child: child,
+  void _showCartOverlay(
+    BuildContext context,
+    Map<String, dynamic> product,
+    bool added,
+  ) {
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            builder: (context, double value, child) => Opacity(
+              opacity: value,
+              child: Transform.scale(
+                scale: 0.9 + (0.1 * value),
+                child: child,
+              ),
             ),
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 20,
-            ),
-            margin: const EdgeInsets.symmetric(horizontal: 50),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1D2E).withOpacity(0.9),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: added
-                        ? const Color(0xFF6B7FD7)
-                        : Colors.orangeAccent,
-                    shape: BoxShape.circle,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 20,
+              ),
+              margin: const EdgeInsets.symmetric(horizontal: 50),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1D2E).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                  child: Icon(
-                    added
-                        ? Icons.shopping_cart_outlined
-                        : Icons.info_outline_rounded,
-                    color: Colors.white,
-                    size: 32,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: added
+                          ? const Color(0xFF6B7FD7)
+                          : Colors.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      added
+                          ? Icons.shopping_cart_outlined
+                          : Icons.info_outline_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  added ? 'Added to Cart!' : 'Already in Cart',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  Text(
+                    added ? 'Added to Cart!' : 'Already in Cart',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product['title'] ?? product['nama_produk'] ?? '',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
+                  const SizedBox(height: 4),
+                  Text(
+                    product['title'] ?? product['nama_produk'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
 
-  Overlay.of(context).insert(overlayEntry);
-  Future.delayed(
-    const Duration(seconds: 2),
-    () => overlayEntry.remove(),
-  );
-}
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(
+      const Duration(seconds: 2),
+      () => overlayEntry.remove(),
+    );
+  }
 
   Widget _buildSellerInfo(Map<String, dynamic> product) {
     final dynamic userObj = product['user'];
