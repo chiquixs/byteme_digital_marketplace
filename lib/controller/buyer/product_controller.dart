@@ -26,18 +26,24 @@ class ProductController extends ChangeNotifier {
       'id': raw['produk_id'] ?? raw['id'] ?? '',
       'nama_produk': raw['nama_produk'] ?? raw['title'] ?? '',
       'title': raw['nama_produk'] ?? raw['title'] ?? '',
+      'harga': raw['harga'] ?? raw['price'] ?? 0,          // ← TAMBAH raw harga
       'price': _formatPrice(raw['harga'] ?? raw['price']),
       'priceLabel': _formatPrice(raw['harga'] ?? raw['price']),
       'deskripsi': raw['deskripsi'] ?? raw['description'] ?? '',
       'image': raw['file_path'] ?? raw['image'] ?? '',
-      'category': _extractCategory(raw),
-      
-      // ✅ Kunci perbaikan: Paksa jadi double
-      'rating': double.tryParse((raw['reviews_avg_rating']?.toString() ?? raw['rating']?.toString() ?? '0.0')) ?? 0.0,
-      
-      // ✅ Kunci perbaikan: Paksa jadi integer
-      'reviews': int.tryParse((raw['reviews_count']?.toString() ?? raw['reviews']?.toString() ?? '0')) ?? 0,
-      
+      'category': _extractCategory(raw),                    // tetap ada (fallback)
+      'categories': raw['categories'] ?? [],                // ← TAMBAH raw list ini
+
+      'rating': double.tryParse(
+        (raw['reviews_avg_rating']?.toString() ?? 
+        raw['rating']?.toString() ?? '0.0')) ?? 0.0,
+
+      'reviews': int.tryParse(
+        (raw['reviews_count']?.toString() ?? 
+        raw['reviews']?.toString() ?? '0')) ?? 0,
+
+      'reviews_avg_rating': raw['reviews_avg_rating'],      // ← TAMBAH untuk explore_page
+      'reviews_count': raw['reviews_count'],                // ← TAMBAH untuk explore_page
       'status': raw['status'] ?? '',
     };
   }
