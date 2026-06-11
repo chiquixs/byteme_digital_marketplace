@@ -53,15 +53,7 @@ class _SellerProfilePageState extends State<SellerProfilePage> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.notifications_none_rounded,
-                                color: Colors.white),
-                          ),
+          
                         ],
                       ),
                       const SizedBox(height: 25),

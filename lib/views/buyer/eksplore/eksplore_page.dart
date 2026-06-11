@@ -22,6 +22,7 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   List<Map<String, dynamic>> _categoryOptions = [];
+  final Set<String> _loadingProductIds = {};
   bool _isLoadingCategories = false;
 
   static const List<Map<String, dynamic>> _priceRangeOptions = [
@@ -53,7 +54,12 @@ class _ExplorePageState extends State<ExplorePage> {
     if (product['kategori'] is Map) {
       return (product['kategori']['nama'] ?? '').toString().trim();
     }
-    return (product['nama_kategori'] ?? product['kategori'] ?? product['category'] ?? '').toString().trim();
+    return (product['nama_kategori'] ??
+            product['kategori'] ??
+            product['category'] ??
+            '')
+        .toString()
+        .trim();
   }
 
   List<Map<String, dynamic>> get _filteredProducts {
@@ -98,7 +104,10 @@ class _ExplorePageState extends State<ExplorePage> {
         final rawPrice = product['harga'] ?? product['price'] ?? 0;
         final priceNum = (rawPrice is num)
             ? rawPrice.toInt()
-            : (int.tryParse(rawPrice.toString().replaceAll(RegExp(r'[^0-9]'), '')) ?? 0);
+            : (int.tryParse(
+                    rawPrice.toString().replaceAll(RegExp(r'[^0-9]'), ''),
+                  ) ??
+                  0);
         if (priceNum < priceRange['min'] || priceNum > priceRange['max']) {
           return false;
         }
@@ -138,7 +147,9 @@ class _ExplorePageState extends State<ExplorePage> {
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
         setState(() {
-          _categoryOptions = data.map((e) => Map<String, dynamic>.from(e)).toList();
+          _categoryOptions = data
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
         });
       }
     } catch (e) {
@@ -276,13 +287,13 @@ class _ExplorePageState extends State<ExplorePage> {
                         : SliverGrid(
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                              childAspectRatio: widget.isSellerView
-                                  ? 0.75
-                                  : 0.70,
-                            ),
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 14,
+                                  childAspectRatio: widget.isSellerView
+                                      ? 0.75
+                                      : 0.70,
+                                ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => _buildProductCard(
                                 _filteredProducts[index],
@@ -517,16 +528,26 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   double _parseRating(Map<String, dynamic> product) {
-    return double.tryParse((product['reviews_avg_rating'] ?? product['rating'] ?? '0.0').toString()) ?? 0.0;
+    return double.tryParse(
+          (product['reviews_avg_rating'] ?? product['rating'] ?? '0.0')
+              .toString(),
+        ) ??
+        0.0;
   }
 
   int _parseReviews(Map<String, dynamic> product) {
-    return int.tryParse((product['reviews_count'] ?? product['reviews'] ?? '0').toString()) ?? 0;
+    return int.tryParse(
+          (product['reviews_count'] ?? product['reviews'] ?? '0').toString(),
+        ) ??
+        0;
   }
 
   Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
     final double rating = _parseRating(product);
     final int reviews = _parseReviews(product);
+    final String productId = (product['id'] ?? product['produk_id'] ?? '')
+        .toString();
+    final bool isLoading = _loadingProductIds.contains(productId);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -561,7 +582,11 @@ class _ExplorePageState extends State<ExplorePage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _buildProductImage(product['image'] ?? product['gambar'] ?? product['file_path']),
+                    _buildProductImage(
+                      product['image'] ??
+                          product['gambar'] ??
+                          product['file_path'],
+                    ),
                     Positioned(
                       top: 8,
                       left: 8,
@@ -595,7 +620,10 @@ class _ExplorePageState extends State<ExplorePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['title'] ?? product['nama_produk'] ?? product['name'] ?? '',
+                    product['title'] ??
+                        product['nama_produk'] ??
+                        product['name'] ??
+                        '',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -611,7 +639,9 @@ class _ExplorePageState extends State<ExplorePage> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          rating > 0 ? '${rating.toStringAsFixed(1)} ($reviews reviews)' : 'Baru',
+                          rating > 0
+                              ? '${rating.toStringAsFixed(1)} ($reviews reviews)'
+                              : 'Baru',
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFF9098B1),
@@ -635,30 +665,28 @@ class _ExplorePageState extends State<ExplorePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final bool added = await context
-                              .read<KeranjangController>()
-                              .addToCart(product) ?? false;
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setState(
+                                  () => _loadingProductIds.add(productId),
+                                );
 
-                          if (!context.mounted) return;
+                                final bool added =
+                                    await context
+                                        .read<KeranjangController>()
+                                        .addToCart(product) ??
+                                    false;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                added
-                                    ? '${product['title'] ?? product['nama_produk'] ?? 'Produk'} ditambahkan!'
-                                    : 'Sudah ada di keranjang',
-                              ),
-                              backgroundColor: added
-                                  ? const Color(0xFF6B7FD7)
-                                  : const Color(0xFF9098B1),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        },
+                                if (mounted) {
+                                  setState(
+                                    () => _loadingProductIds.remove(productId),
+                                  );
+                                }
+
+                                if (!context.mounted) return;
+                                _showCartOverlay(context, product, added);
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B7FD7),
                           foregroundColor: Colors.white,
@@ -672,7 +700,16 @@ class _ExplorePageState extends State<ExplorePage> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: const Text('Add to Cart'),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Add to Cart'),
                       ),
                     ),
                 ],
@@ -682,6 +719,88 @@ class _ExplorePageState extends State<ExplorePage> {
         ),
       ),
     );
+  }
+
+  void _showCartOverlay(
+    BuildContext context,
+    Map<String, dynamic> product,
+    bool added,
+  ) {
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            builder: (context, double value, child) => Opacity(
+              opacity: value,
+              child: Transform.scale(scale: 0.9 + (0.1 * value), child: child),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              margin: const EdgeInsets.symmetric(horizontal: 50),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1D2E).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: added
+                          ? const Color(0xFF6B7FD7)
+                          : Colors.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      added
+                          ? Icons.shopping_cart_outlined
+                          : Icons.info_outline_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    added ? 'Added to Cart!' : 'Already in Cart',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product['title'] ?? product['nama_produk'] ?? '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 2), () => overlayEntry.remove());
   }
 
   Widget _buildProductImage(String? image) {
@@ -769,7 +888,7 @@ class _FilterSheet extends StatefulWidget {
   final String? initialPriceRange;
   final int? initialRating;
   final void Function(Set<String> categories, String? priceRange, int? rating)
-      onApply;
+  onApply;
   final VoidCallback onReset;
 
   const _FilterSheet({
@@ -900,7 +1019,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                             children: widget.categoryOptions.map((catMap) {
                               // FIX 1: Trim nama kategori dari backend
                               final cat = catMap['nama'].toString().trim();
-                              final bool isSelected = _selectedCategories.contains(cat);
+                              final bool isSelected = _selectedCategories
+                                  .contains(cat);
 
                               return GestureDetector(
                                 onTap: () => setState(() {
